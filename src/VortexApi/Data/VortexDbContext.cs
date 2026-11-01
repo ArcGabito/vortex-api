@@ -21,6 +21,10 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
     public DbSet<ChangeEntry> ChangeEntries => Set<ChangeEntry>();
 
+    public DbSet<IntegrationEvent> IntegrationEvents => Set<IntegrationEvent>();
+    public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
+    public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
         // SQLite (usado en pruebas) no sabe comparar/ordenar DateTimeOffset; se guarda como entero.
@@ -114,6 +118,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
         });
 
         ConfigureMasterData(b);
+        ConfigureIntegration(b);
 
         // Los Id Guid se asignan en el constructor; así EF trata como nuevas (Added) las entidades
         // agregadas por navegación (p. ej. product.Members.Add) en lugar de intentar un UPDATE.
@@ -199,6 +204,42 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.EntityType, x.EntityId });
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureIntegration(ModelBuilder b)
+    {
+        b.Entity<IntegrationEvent>(e =>
+        {
+            e.Property(x => x.Type).HasMaxLength(100);
+            e.Property(x => x.Category).HasMaxLength(50);
+            e.Property(x => x.Source).HasMaxLength(16);
+            e.Property(x => x.SubjectType).HasMaxLength(50);
+            e.Property(x => x.SubjectId).HasMaxLength(100);
+            e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
+            e.HasIndex(x => new { x.OrganizationId, x.Category, x.Sequence });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<WebhookSubscription>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.Url).HasMaxLength(500);
+            e.Property(x => x.ReceiverProduct).HasMaxLength(16);
+            e.Property(x => x.Secret).HasMaxLength(100);
+            e.HasIndex(x => x.OrganizationId);
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<WebhookDelivery>(e =>
+        {
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasIndex(x => new { x.SubscriptionId, x.Id });
+            e.HasOne(x => x.Subscription).WithMany()
+                .HasForeignKey(x => x.SubscriptionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Event).WithMany()
+                .HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

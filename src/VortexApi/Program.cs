@@ -9,6 +9,7 @@ using VortexApi.Data;
 using VortexApi.Infrastructure;
 using VortexApi.Security;
 using VortexApi.Services;
+using VortexApi.Services.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
@@ -26,6 +27,7 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<EventPublisher>();
 builder.Services.AddScoped<MasterDataWriter>();
 builder.Services.AddHttpContextAccessor();
 
@@ -48,6 +50,12 @@ builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi(o => o.AddDocumentTransformer<BearerSecurityTransformer>());
 builder.Services.AddHealthChecks();
+
+builder.Services.Configure<WebhookOptions>(config.GetSection(WebhookOptions.Section));
+builder.Services.AddScoped<WebhookDeliveryService>();
+builder.Services.AddHostedService<WebhookDispatcher>();
+builder.Services.AddHttpClient(WebhookDeliveryService.HttpClientName)
+    .ConfigurePrimaryHttpMessageHandler(sp => NetworkGuard.CreateHandler(sp.GetRequiredService<IOptions<WebhookOptions>>().Value));
 
 if (config.GetValue<bool>("ForwardedHeaders:Enabled"))
 {

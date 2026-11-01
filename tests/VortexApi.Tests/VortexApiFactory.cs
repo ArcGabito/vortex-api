@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 using VortexApi.Data;
+using VortexApi.Services.Webhooks;
 
 namespace VortexApi.Tests;
 
@@ -30,6 +32,16 @@ public sealed class VortexApiFactory : WebApplicationFactory<Program>
 
     public FakeTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
 
+    /// <summary>Receptor de webhooks falso: registra cada POST y responde con <see cref="FakeWebhookReceiver.StatusCode"/>.</summary>
+    public FakeWebhookReceiver Webhooks { get; } = new();
+
+    /// <summary>Ejecuta una pasada del despachador de webhooks.</summary>
+    public async Task<int> DeliverWebhooksAsync()
+    {
+        using var scope = Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<WebhookDeliveryService>().DeliverDueAsync();
+    }
+
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() },
@@ -43,6 +55,8 @@ public sealed class VortexApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Issuer", Issuer);
         builder.UseSetting("Jwt:SigningKeyPem", SigningKeyPem);
         builder.UseSetting("RateLimiting:AuthPermitsPerMinute", "10000");
+        builder.UseSetting("Webhooks:DispatcherEnabled", "false");
+        builder.UseSetting("Webhooks:MaxAttempts", "3");
         builder.UseSetting("Seed:AdminEmail", AdminEmail);
         builder.UseSetting("Seed:AdminPassword", AdminPassword);
         foreach (var (code, key) in ProductKeys)
@@ -55,6 +69,7 @@ public sealed class VortexApiFactory : WebApplicationFactory<Program>
             services.AddDbContext<VortexDbContext>(o => o.UseSqlite(_connection));
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
+            services.AddHttpClient(WebhookDeliveryService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Webhooks);
         });
     }
 
@@ -102,4 +117,22 @@ public static class HttpPutExtensions
             throw new HttpRequestException($"{url}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
         return await response.ReadJsonAsync();
     }
+}
+
+public sealed class FakeWebhookReceiver : HttpMessageHandler
+{
+    public sealed record Received(Uri Url, Dictionary<string, string> Headers, string Body);
+
+    public List<Received> Requests { get; } = [];
+    public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        var headers = request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value));
+        Requests.Add(new Received(request.RequestUri!, headers, await request.Content!.ReadAsStringAsync(ct)));
+        return new HttpResponseMessage(StatusCode);
+    }
+
+    // El HttpClientFactory rota handlers; este es compartido y no debe liberarse.
+    protected override void Dispose(bool disposing) { }
 }

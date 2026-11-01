@@ -44,4 +44,9 @@ public static class ErrorCodes
     public const string DuplicateSku = "duplicate_sku";
     public const string DuplicateCode = "duplicate_code";
     public const string InvalidDocument = "invalid_document";
+
+    public const string InvalidEventType = "invalid_event_type";
+    public const string InvalidEventData = "invalid_event_data";
+    public const string EventIdInUse = "event_id_in_use";
+    public const string InvalidWebhookUrl = "invalid_webhook_url";
 }

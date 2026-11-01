@@ -17,7 +17,8 @@ namespace VortexApi.Services;
 /// secuencias quedan correlativas y en orden de commit. Un lector que pide "lo posterior a N" nunca se salta cambios.
 /// </para>
 /// </summary>
-public sealed class MasterDataWriter(VortexDbContext db, TimeProvider clock, IOptions<Microsoft.AspNetCore.Mvc.JsonOptions> json)
+public sealed class MasterDataWriter(
+    VortexDbContext db, EventPublisher events, TimeProvider clock, IOptions<Microsoft.AspNetCore.Mvc.JsonOptions> json)
 {
     public delegate Task<(TEntity Entity, ChangeOperation Operation)> Mutation<TEntity>();
 
@@ -58,6 +59,7 @@ public sealed class MasterDataWriter(VortexDbContext db, TimeProvider clock, IOp
                     .ExecuteUpdateAsync(s => s.SetProperty(o => o.ChangeSequence, o => o.ChangeSequence + 1));
                 var sequence = await db.Organizations.Where(o => o.Id == orgId).Select(o => o.ChangeSequence).SingleAsync();
 
+                var payload = JsonSerializer.Serialize(toPayload(entity), json.Value.JsonSerializerOptions);
                 db.ChangeEntries.Add(new ChangeEntry
                 {
                     OrganizationId = orgId,
@@ -69,8 +71,14 @@ public sealed class MasterDataWriter(VortexDbContext db, TimeProvider clock, IOp
                     ChangedAt = now,
                     ChangedByUserId = actor.UserId(),
                     Source = SourceOf(actor),
-                    Payload = JsonSerializer.Serialize(toPayload(entity), json.Value.JsonSerializerOptions),
+                    Payload = payload,
                 });
+
+                // El mismo cambio como evento (master.item.updated, …) para quienes reciben webhooks.
+                await events.AppendAsync(
+                    new EventActor(orgId, SourceOf(actor), actor.UserId(), actor.DeviceId()),
+                    $"master.{entityType}.{operation.ToString().ToLowerInvariant()}", payload,
+                    subjectType: entityType, subjectId: entity.Id.ToString());
 
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();

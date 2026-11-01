@@ -133,3 +133,45 @@ Authorization: Bearer {{session.response.body.accessToken}}
 ### 17. Feed de cambios desde el inicio
 GET {{api}}/api/master/changes?since=0&limit=200
 Authorization: Bearer {{session.response.body.accessToken}}
+
+### ---------- Fase 3: eventos de integración ----------
+
+### 18. Publicar una venta desde el sistema (el id lo genera el sistema; reintentar no duplica)
+POST {{api}}/api/events
+Authorization: Bearer {{session.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "id": "5d1f0c3e-8a8b-4f0e-9b6a-2c7d9e1f0a11",
+  "type": "sale.completed",
+  "subjectType": "sale",
+  "subjectId": "B001-000123",
+  "data": { "total": 59.90, "currency": "PEN", "lines": [ { "sku": "CAFE-250", "qty": 2, "price": 29.95 } ] }
+}
+
+### 19. Feed de eventos: ventas y cambios de artículos, sin los que publicó el propio sistema
+GET {{api}}/api/events?since=0&types=sale.*,master.item.*&excludeSource=ERP
+Authorization: Bearer {{session.response.body.accessToken}}
+
+### 20. Catálogo de eventos
+GET {{api}}/api/events/catalog
+Authorization: Bearer {{session.response.body.accessToken}}
+
+### 21. Login del OrgAdmin de la organización (para webhooks). Créelo antes con role "OrgAdmin".
+# @name orgadmin
+POST {{api}}/api/admin/auth/login
+Content-Type: application/json
+
+{ "email": "ti@acme.com", "password": "Clave-Segura-2026!" }
+
+### 22. Registrar webhook (la respuesta trae el secreto de firma)
+# @name webhook
+POST {{api}}/api/admin/webhooks
+Authorization: Bearer {{orgadmin.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "Backend ERP", "url": "http://localhost:5999/hooks/vortex", "eventTypes": ["sale.*", "master.item.*"], "receiverProduct": "ERP" }
+
+### 23. Historial de entregas
+GET {{api}}/api/admin/webhooks/{{webhook.response.body.webhook.id}}/deliveries
+Authorization: Bearer {{orgadmin.response.body.accessToken}}

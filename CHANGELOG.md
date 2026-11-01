@@ -8,6 +8,18 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Fase 3: eventos de integración** entre sistemas: `POST /api/events` (idempotente por `id`),
+  `POST /api/events/batch` (hasta 100, resultado por evento), feed `GET /api/events?since=&types=&excludeSource=`
+  con secuencia correlativa por organización y catálogo `GET /api/events/catalog`.
+- Los cambios de datos maestros se publican también como eventos `master.{party,item,site,company}.{created,updated,deleted}`.
+- Webhooks por organización (`/api/admin/webhooks`, solo OrgAdmin): firma HMAC-SHA256
+  (`X-Vortex-Signature: t=…,v1=…`), entrega al menos una vez con reintentos exponenciales, *lease* para varias
+  réplicas, historial de entregas, reencolado manual, rotación de secreto y `receiverProduct` para no recibir los
+  eventos propios.
+- Protección SSRF para webhooks: rechazo de redes privadas, loopback y metadatos de la nube al registrar y al
+  conectar (resolución DNS en `ConnectCallback`), sin redirecciones. Opciones `Webhooks:AllowPrivateNetworks` y
+  `Webhooks:AllowInsecureHttp`.
+- Migración `IntegrationEvents`.
 - **Fase 2: datos maestros** compartidos entre los sistemas, separados por organización:
   clientes/proveedores (`/api/master/parties`), artículos (`/api/master/items`), sedes/almacenes
   (`/api/master/sites`) y datos de la empresa (`/api/master/company`).
