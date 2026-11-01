@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using VortexApi.Domain;
 using VortexApi.Security;
 
 namespace VortexApi.Controllers;
@@ -25,5 +26,9 @@ public sealed class WellKnownController(SigningKeyProvider keys, IOptions<JwtOpt
         ["issuer"] = options.Value.Issuer,
         ["jwks_uri"] = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/.well-known/jwks.json",
         ["id_token_signing_alg_values_supported"] = new[] { "RS256" },
+        ["token_endpoint"] = $"{Request.Scheme}://{Request.Host}{Request.PathBase}/connect/token",
+        ["grant_types_supported"] = new[] { "client_credentials" },
+        ["token_endpoint_auth_methods_supported"] = new[] { "client_secret_basic", "client_secret_post" },
+        ["scopes_supported"] = IntegrationScopes.Descriptions.Keys.ToArray(),
     });
 }

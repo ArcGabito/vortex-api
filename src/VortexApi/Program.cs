@@ -41,8 +41,9 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
     });
 builder.Services.AddAuthorization(Policies.Configure);
 
-builder.Services.AddRateLimiter(o =>
-    RateLimitPolicies.Configure(o, config.GetValue("RateLimiting:AuthPermitsPerMinute", 20)));
+builder.Services.AddRateLimiter(o => RateLimitPolicies.Configure(o,
+    config.GetValue("RateLimiting:AuthPermitsPerMinute", 20),
+    config.GetValue("RateLimiting:IntegrationPermitsPerMinute", 600)));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
@@ -82,12 +83,17 @@ if (config.GetValue<bool>("ForwardedHeaders:Enabled"))
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-if (app.Environment.IsDevelopment())
+// Documentación pública de la API (OpenAPI + referencia interactiva en /docs) para quienes integran con Vortex.
+if (config.GetValue("Docs:Enabled", true))
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapOpenApi().AllowAnonymous();
+    app.MapScalarApiReference("/docs", o => o
+        .WithTitle("Vortex Hub API")
+        .AddClientCredentialsFlow("OAuth2", flow => flow.WithTokenUrl("/connect/token")))
+        .AllowAnonymous();
 }
-else
+
+if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
     // Detrás de un proxy (Azure Container Apps) el TLS lo termina el ingress; ahí se fuerza HTTPS.
@@ -95,8 +101,8 @@ else
         app.UseHttpsRedirection();
 }
 
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

@@ -16,7 +16,7 @@ namespace VortexApi.Controllers.Master;
 /// </summary>
 [ApiController]
 [Route("api/master/changes")]
-[Authorize(Policy = Policies.OrganizationData)]
+[Authorize(Policy = Policies.MasterRead)]
 public sealed class ChangesController(VortexDbContext db) : ControllerBase
 {
     /// <param name="since">Cursor de la consulta anterior; 0 para recibir todo desde el inicio.</param>

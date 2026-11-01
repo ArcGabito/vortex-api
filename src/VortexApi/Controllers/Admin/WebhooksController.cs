@@ -11,10 +11,13 @@ using VortexApi.Services.Webhooks;
 
 namespace VortexApi.Controllers.Admin;
 
-/// <summary>Webhooks de la organización (solo su OrgAdmin).</summary>
+/// <summary>
+/// Webhooks de la organización. El OrgAdmin administra todos; una aplicación de integración con
+/// <c>webhooks.manage</c> solo ve y administra los suyos, que nunca reciben los eventos que ella misma publica.
+/// </summary>
 [ApiController]
 [Route("api/admin/webhooks")]
-[Authorize(Policy = Policies.OrganizationAdmin)]
+[Authorize(Policy = Policies.WebhooksManage)]
 public sealed class WebhooksController(VortexDbContext db, TimeProvider clock, IOptions<WebhookOptions> options) : ControllerBase
 {
     private Guid OrgId => User.OrganizationId()!.Value;
@@ -22,8 +25,7 @@ public sealed class WebhooksController(VortexDbContext db, TimeProvider clock, I
     [HttpGet]
     public async Task<IReadOnlyList<WebhookDto>> List()
     {
-        var subscriptions = await db.WebhookSubscriptions.AsNoTracking()
-            .Where(s => s.OrganizationId == OrgId).OrderBy(s => s.Name).ToListAsync();
+        var subscriptions = await Scoped().AsNoTracking().OrderBy(s => s.Name).ToListAsync();
         var result = new List<WebhookDto>();
         foreach (var s in subscriptions)
             result.Add(await ToDtoAsync(s));
@@ -44,6 +46,7 @@ public sealed class WebhooksController(VortexDbContext db, TimeProvider clock, I
             Url = request.Url.Trim(),
             Secret = NewSecret(),
             CreatedAt = clock.GetUtcNow(),
+            OwnerClientId = User.IntegrationClientId(),
         };
         Apply(subscription, request);
         db.WebhookSubscriptions.Add(subscription);
@@ -118,8 +121,9 @@ public sealed class WebhooksController(VortexDbContext db, TimeProvider clock, I
         if (invalid is not null)
             throw ApiException.BadRequest(ErrorCodes.InvalidEventType, $"Patrón inválido: {invalid}.");
 
-        var receiver = r.ReceiverProduct?.Trim().ToUpperInvariant();
-        if (receiver is not null && !ProductCodes.Defaults.ContainsKey(receiver))
+        // Una aplicación de integración siempre es la receptora de sus webhooks.
+        var receiver = User.IsIntegration() ? MasterDataWriterSource() : r.ReceiverProduct?.Trim().ToUpperInvariant();
+        if (!User.IsIntegration() && receiver is not null && !ProductCodes.Defaults.ContainsKey(receiver))
             throw ApiException.BadRequest(ErrorCodes.Validation, $"Sistema desconocido: {receiver}.");
 
         s.Name = r.Name.Trim();
@@ -136,7 +140,7 @@ public sealed class WebhooksController(VortexDbContext db, TimeProvider clock, I
             .SetProperty(d => d.LastError, "Suscripción desactivada."));
 
     private async Task<WebhookSubscription> FindAsync(Guid id) =>
-        await db.WebhookSubscriptions.SingleOrDefaultAsync(s => s.Id == id && s.OrganizationId == OrgId)
+        await Scoped().SingleOrDefaultAsync(s => s.Id == id)
         ?? throw ApiException.NotFound("Webhook");
 
     private async Task<WebhookDto> ToDtoAsync(WebhookSubscription s)
@@ -148,6 +152,17 @@ public sealed class WebhooksController(VortexDbContext db, TimeProvider clock, I
             counts.FirstOrDefault(c => c.Key == DeliveryStatus.Pending)?.Count ?? 0,
             counts.FirstOrDefault(c => c.Key == DeliveryStatus.Failed)?.Count ?? 0);
     }
+
+    /// <summary>OrgAdmin: todos los webhooks de la organización. Integración: solo los que registró.</summary>
+    private IQueryable<WebhookSubscription> Scoped()
+    {
+        var query = db.WebhookSubscriptions.Where(s => s.OrganizationId == OrgId);
+        if (User.IntegrationClientId() is { } clientId)
+            query = query.Where(s => s.OwnerClientId == clientId);
+        return query;
+    }
+
+    private string MasterDataWriterSource() => Services.MasterDataWriter.SourceOf(User);
 
     private static string NewSecret() => $"whsec_{Security.Hashing.RandomToken(32)}";
 }

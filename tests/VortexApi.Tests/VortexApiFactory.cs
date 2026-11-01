@@ -17,7 +17,7 @@ using VortexApi.Services.Webhooks;
 
 namespace VortexApi.Tests;
 
-public sealed class VortexApiFactory : WebApplicationFactory<Program>
+public sealed class VortexApiFactory(IReadOnlyDictionary<string, string>? settings = null) : WebApplicationFactory<Program>
 {
     public const string AdminEmail = "root@vortex.test";
     public const string AdminPassword = "Root-Pass-2026!";
@@ -61,6 +61,8 @@ public sealed class VortexApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Seed:AdminPassword", AdminPassword);
         foreach (var (code, key) in ProductKeys)
             builder.UseSetting($"Seed:ProductKeys:{code}", key);
+        foreach (var (key, value) in settings ?? new Dictionary<string, string>())
+            builder.UseSetting(key, value);
 
         builder.ConfigureServices(services =>
         {

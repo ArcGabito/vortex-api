@@ -69,14 +69,14 @@ public sealed class MasterDataWriter(
                     Operation = operation,
                     Version = entity.Version,
                     ChangedAt = now,
-                    ChangedByUserId = actor.UserId(),
+                    ChangedByUserId = actor.ActingUserId(),
                     Source = SourceOf(actor),
                     Payload = payload,
                 });
 
                 // El mismo cambio como evento (master.item.updated, …) para quienes reciben webhooks.
                 await events.AppendAsync(
-                    new EventActor(orgId, SourceOf(actor), actor.UserId(), actor.DeviceId()),
+                    new EventActor(orgId, SourceOf(actor), actor.ActingUserId(), actor.DeviceId()),
                     $"master.{entityType}.{operation.ToString().ToLowerInvariant()}", payload,
                     subjectType: entityType, subjectId: entity.Id.ToString());
 
@@ -96,8 +96,9 @@ public sealed class MasterDataWriter(
         }
     }
 
+    /// <summary>Sistema Vortex (ERP, CRM, WMS, POS), aplicación externa (<c>EXT:slug</c>) o <c>ADMIN</c>.</summary>
     public static string SourceOf(ClaimsPrincipal actor) =>
-        actor.FindFirstValue(VortexClaims.Product) ?? "ADMIN";
+        actor.FindFirstValue(VortexClaims.Product) ?? actor.FindFirstValue(VortexClaims.Source) ?? "ADMIN";
 
     public static ApiException VersionConflict() => new(StatusCodes.Status412PreconditionFailed, ErrorCodes.VersionConflict,
         "El registro fue modificado por otro sistema o usuario. Vuelva a leerlo y reintente.");

@@ -20,7 +20,7 @@ namespace VortexApi.Controllers.Master;
 /// </list>
 /// </summary>
 [ApiController]
-[Authorize(Policy = Policies.OrganizationData)]
+[Authorize(Policy = Policies.MasterRead)]
 public abstract class MasterDataControllerBase<TEntity, TRequest, TDto>(VortexDbContext db, MasterDataWriter writer)
     : ControllerBase where TEntity : MasterEntity, new()
 {
@@ -52,6 +52,7 @@ public abstract class MasterDataControllerBase<TEntity, TRequest, TDto>(VortexDb
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.MasterWrite)]
     public async Task<ActionResult<TDto>> Create(TRequest request)
     {
         var entity = await UpsertAsync(Guid.NewGuid(), request, expectedVersion: null);
@@ -60,6 +61,7 @@ public abstract class MasterDataControllerBase<TEntity, TRequest, TDto>(VortexDb
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Policies.MasterWrite)]
     public async Task<ActionResult<TDto>> Upsert(Guid id, TRequest request)
     {
         var entity = await UpsertAsync(id, request, ExpectedVersion());
@@ -68,6 +70,7 @@ public abstract class MasterDataControllerBase<TEntity, TRequest, TDto>(VortexDb
 
     /// <summary>Borrado lógico: el registro deja de listarse pero sigue disponible por Id para quien lo referencie.</summary>
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Policies.MasterWrite)]
     public async Task<IActionResult> Delete(Guid id)
     {
         var expected = ExpectedVersion();

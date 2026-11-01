@@ -52,3 +52,26 @@ public sealed record WebhookDeliveryDto(
 public sealed record WebhookPayload(
     Guid Id, long Sequence, string Type, string Source, Guid OrganizationId, int SchemaVersion, string? SubjectType,
     string? SubjectId, DateTimeOffset OccurredAt, DateTimeOffset RecordedAt, JsonElement Data);
+
+// Aplicaciones de integración
+
+public sealed record CreateIntegrationClientRequest(
+    [Required, MaxLength(100)] string Name,
+    [Required, MaxLength(40)] string Slug,
+    [Required, MinLength(1), MaxLength(20)] List<string> Scopes,
+    DateTimeOffset? ExpiresAt = null);
+
+public sealed record UpdateIntegrationClientRequest(
+    [Required, MaxLength(100)] string Name,
+    [Required, MinLength(1), MaxLength(20)] List<string> Scopes,
+    bool IsActive = true,
+    DateTimeOffset? ExpiresAt = null);
+
+public sealed record IntegrationClientDto(
+    Guid Id, string Name, string Slug, string Source, string ClientId, string SecretHint, IReadOnlyList<string> Scopes,
+    bool IsActive, DateTimeOffset? ExpiresAt, DateTimeOffset CreatedAt, DateTimeOffset? LastUsedAt);
+
+/// <summary>Credenciales de la aplicación. El <see cref="ClientSecret"/> se muestra solo aquí.</summary>
+public sealed record IntegrationCredentialsResponse(IntegrationClientDto Client, string ClientSecret, string TokenEndpoint);
+
+public sealed record ScopeInfo(string Scope, string Description);

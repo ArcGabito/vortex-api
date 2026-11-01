@@ -1,0 +1,26 @@
+# Actualizaciones de versiones (las de seguridad se activan aparte en la configuración del repo).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      microsoft:
+        patterns: ["Microsoft.*", "System.*"]
+      testing:
+        patterns: ["xunit*", "coverlet*", "Microsoft.NET.Test.Sdk"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
