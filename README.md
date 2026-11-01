@@ -9,14 +9,14 @@ este hub permite usarlos juntos o reemplazar uno por otro sin perder usuarios ni
 | 1. Identidad y accesos | Un usuario para los 4 sistemas, sistemas habilitados por organización, roles por sistema, equipos, modo sin conexión | ✅ |
 | 2. Datos maestros | Clientes/proveedores, artículos, sedes/almacenes y datos de la empresa, con feed de cambios | ✅ |
 | 3. Eventos de integración | Publicar y consumir eventos entre sistemas (`sale.completed`, `stock.adjusted`, …) y webhooks | ✅ |
-| 4. Sincronización en el SDK | Módulo de sincronización para las apps MAUI | Pendiente |
+| 4. Sincronización en el SDK | Sesión con renovación automática y sincronización offline-first para las apps MAUI | ✅ |
 
 ## Estructura
 
 | Proyecto | Descripción |
 |---|---|
 | `src/VortexApi` | Web API (controladores, EF Core + SQL Server, JWT RS256). |
-| `src/VortexApi.Client` | Librería para las apps MAUI: login, refresh, heartbeat, selector de sistemas y validación offline. |
+| `src/VortexApi.Client` | SDK para las apps MAUI: sesión, sincronización offline-first, eventos y validación sin conexión. |
 | `tests/VortexApi.Tests` | Pruebas de integración (SQLite en memoria). |
 
 ## Modelo
@@ -270,40 +270,101 @@ Los errores se devuelven como ProblemDetails con un `code` estable (`product_not
 `device_mismatch`, `account_locked`, `refresh_token_reused`, `invalid_product`, `version_conflict`,
 `duplicate_document`, `duplicate_sku`, `duplicate_code`, `invalid_document`, …).
 
-## Integración en una app MAUI
+## Integración en una app MAUI (SDK `VortexApi.Client`)
+
+El SDK tiene tres piezas:
+
+| Clase | Para qué |
+|---|---|
+| `VortexApiClient` | Llamadas HTTP de bajo nivel (cada una recibe el access token). |
+| `VortexSessionManager` | Login, renovación automática del token, heartbeat, validación sin conexión y cierre de sesión. |
+| `VortexSync` | Sincronización offline-first: cola local de salida + lectura de los feeds con handlers. |
+
+### 1. Configuración (MauiProgram.cs)
 
 ```csharp
-var client = new VortexApiClient(
+builder.Services.AddSingleton(sp => new VortexApiClient(
     new HttpClient { BaseAddress = new Uri("https://hub.miempresa.com/") },
-    new VortexApiClientOptions { ProductCode = "POS", ProductKey = "<clave del sistema>" });
+    new VortexApiClientOptions { ProductCode = "POS", ProductKey = "<clave del sistema>" }));
 
-// deviceId: GUID generado una vez y guardado en SecureStorage (mínimo 16 caracteres).
-var session = await client.LoginAsync(email, password, deviceId, DeviceInfo.Name, DeviceInfo.Platform.ToString());
-await SecureStorage.SetAsync("refresh", session.RefreshToken);
-await SecureStorage.SetAsync("offline", session.OfflineToken);
-await SecureStorage.SetAsync("jwks", await client.GetSigningKeysAsync());
+// Implementación propia de ISessionStore sobre SecureStorage (serializando con VortexJson.Options).
+builder.Services.AddSingleton<ISessionStore, SecureStorageSessionStore>();
 
-// Rol y módulos dentro del sistema
+// deviceId: GUID generado la primera vez y guardado (mínimo 16 caracteres).
+builder.Services.AddSingleton(sp => new VortexSessionManager(
+    sp.GetRequiredService<VortexApiClient>(), sp.GetRequiredService<ISessionStore>(), DeviceIdentity.Get()));
+
+builder.Services.AddSingleton<IVortexSyncStore>(_ =>
+    new JsonFileSyncStore(Path.Combine(FileSystem.AppDataDirectory, "vortex-sync.json")));
+builder.Services.AddSingleton<VortexSync>();
+```
+
+### 2. Sesión
+
+```csharp
+var session = await sessions.LoginAsync(email, password, DeviceInfo.Name, DeviceInfo.Platform.ToString());
 var esCajero = session.Access.Role == "cajero";
 var conFacturacion = session.Access.HasFeature("facturacion");
 
-// Selector de sistemas: a qué otros sistemas de la suite puede entrar el usuario
-var sistemas = await client.GetAvailableProductsAsync(session.AccessToken);
+sessions.SessionEnded += (_, ex) => MainThread.BeginInvokeOnMainThread(() => Shell.Current.GoToAsync("//login"));
 
-// Cada pocos minutos: heartbeat. Si no hay red, validar el offline token guardado.
-try
-{
-    var hb = await client.HeartbeatAsync(session.AccessToken);
-    await SecureStorage.SetAsync("offline", hb.OfflineToken);
-}
-catch (VortexApiException ex) when (ex.IsAccessDenied) { /* cerrar sesión */ }
+// Cualquier llamada: el token se renueva solo (una única renovación aunque haya llamadas concurrentes).
+var sistemas = await sessions.WithAccessTokenAsync(t => client.GetAvailableProductsAsync(t));
+
+// Al abrir la app o cada pocos minutos:
+try { await sessions.HeartbeatAsync(); }
 catch (HttpRequestException)
 {
-    var validator = new OfflineAccessValidator(await SecureStorage.GetAsync("jwks"), "https://hub.miempresa.com");
-    var offline = await validator.ValidateAsync(await SecureStorage.GetAsync("offline"), "POS", deviceId);
+    var offline = await sessions.ValidateOfflineAsync("https://hub.miempresa.com");
     if (!offline.IsValid) { /* periodo sin conexión agotado: pedir conexión */ }
 }
 ```
+
+### 3. Sincronización
+
+```csharp
+sync
+    // Datos maestros → base local de la app (aplicar por Id y versión: deben ser idempotentes).
+    .OnItems(async (c, ct) =>
+    {
+        if (c.Operation == VortexChangeOperation.Deleted) await db.MarkItemDeletedAsync(c.EntityId);
+        else await db.UpsertItemAsync(c.Data, c.Version);
+    })
+    .OnParties((c, ct) => db.UpsertCustomerAsync(c.Data, c.Version))
+    // Eventos de otros sistemas (los propios se excluyen solos).
+    .OnEvent("stock.*", (e, ct) => db.ApplyStockAsync(e.DataAs<StockAdjusted>()))
+    // Edición local que chocó con una más reciente del hub: por defecto gana el hub.
+    .OnConflict((c, ct) => Task.FromResult(VortexConflictResolution.DiscardLocal))
+    .OnPushFailed((f, ct) => logger.LogWarning("Rechazado por el hub: {Code} {Error}", f.ErrorCode, f.Error));
+
+// Funciona igual con o sin conexión: se encola y se sube en la próxima sincronización, en orden.
+var clienteId = Guid.NewGuid();
+await sync.EnqueueUpsertAsync(VortexMasterResource.Parties, clienteId,
+    new { name = "Bodega Don Pepe", documentType = "RUC", documentNumber = "20123456789" });
+await sync.EnqueueEventAsync("sale.completed", new { customerId = clienteId, total = 59.90m }, "sale", "B001-000123");
+
+// En segundo plano: los cortes de red no detienen el ciclo.
+_ = sync.RunPeriodicAsync(TimeSpan.FromSeconds(30),
+    onSynced: r => Debug.WriteLine($"↑{r.PushedEvents + r.PushedMasterWrites} ↓{r.PulledChanges + r.PulledEvents} pendientes:{r.PendingOutbox}"),
+    onError: ex => logger.LogError(ex, "Handler de sincronización"),
+    ct: appStopping);
+```
+
+Garantías de `SyncAsync`:
+
+- **Orden**: la cola se sube en el orden en que se encoló (un cliente creado sin conexión llega antes que la venta
+  que lo referencia). Los eventos consecutivos se agrupan en lotes de hasta 100.
+- **Sin pérdidas**: sin red o con el hub caído devuelve `Completed = false` y conserva la cola y los cursores.
+- **Sin duplicados**: los eventos llevan Id generado en el equipo y los datos maestros se escriben con `PUT /{id}`;
+  reintentar no duplica.
+- **Rechazos definitivos** (RUC inválido, tipo de evento mal escrito, duplicado): pasan a `GetFailedAsync()` y
+  no bloquean el resto de la cola.
+- **Handler que falla**: lanza `VortexSyncException` y el cursor queda en el último cambio aplicado; la siguiente
+  pasada reintenta desde el que falló.
+- **Sesión terminada** (usuario desactivado, acceso retirado): lanza `VortexApiException` y dispara `SessionEnded`.
+
+`JsonFileSyncStore` guarda cursores y cola en un archivo con escritura atómica; para colas grandes conviene
+implementar `IVortexSyncStore` sobre la base SQLite de la app, en la misma transacción que los datos locales.
 
 Si un sistema tiene backend propio, puede validar los access tokens sin llamar al hub:
 

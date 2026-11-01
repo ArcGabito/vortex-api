@@ -7,7 +7,24 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Added
+- `Directory.Build.props` con la versión común de la solución (0.2.0) y metadatos AGPL-3.0.
+- **Fase 4: SDK para las apps MAUI** (`VortexApi.Client`):
+  - `VortexSessionManager`: login, renovación automática del access token con refresh de un solo vuelo (evita que
+    llamadas concurrentes disparen la detección de reutilización), reintento ante 401, heartbeat que guarda el offline
+    token, validación sin conexión con las llaves guardadas, cierre de sesión y evento `SessionEnded`.
+    Persistencia mediante `ISessionStore` (la app lo implementa con `SecureStorage`).
+  - `VortexSync`: sincronización offline-first. Cola local (outbox) de eventos y escrituras de datos maestros que se
+    sube en orden; lectura de los feeds con handlers tipados (`OnItems`, `OnParties`, `OnSites`, `OnCompany`,
+    `OnEvent("sale.*")`); conflictos 412 resueltos por `OnConflict`; rechazos definitivos a una lista de fallidos sin
+    bloquear la cola; cortes de red sin pérdida (`Completed = false`); cursor que no avanza si un handler falla;
+    `RunPeriodicAsync` para sincronizar en segundo plano.
+  - `IVortexSyncStore` con implementaciones `InMemorySyncStore` y `JsonFileSyncStore` (escritura atómica).
+  - `VortexApiClient`: métodos de datos maestros (`GetMasterChangesAsync`, `GetMasterAsync`, `PutMasterAsync`,
+    `DeleteMasterAsync`) y eventos (`GetEventsAsync`, `PublishEventsAsync`), modelos tipados (`VortexParty`,
+    `VortexItem`, `VortexSite`, `VortexCompany`, `VortexEvent`) y `VortexJson.Options`.
 - **Fase 3: eventos de integración** entre sistemas: `POST /api/events` (idempotente por `id`),
   `POST /api/events/batch` (hasta 100, resultado por evento), feed `GET /api/events?since=&types=&excludeSource=`
   con secuencia correlativa por organización y catálogo `GET /api/events/catalog`.
@@ -83,5 +100,6 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - Pruebas de integración de los flujos de seguridad.
 - `docker-compose.yml` con SQL Server para desarrollo local.
 
-[Unreleased]: https://github.com/ArcGabito/vortex-api/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ArcGabito/vortex-api/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ArcGabito/vortex-api/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ArcGabito/vortex-api/releases/tag/v0.1.0

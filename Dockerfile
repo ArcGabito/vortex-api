@@ -5,6 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restaurar primero solo con los .csproj para aprovechar la caché de capas.
+COPY Directory.Build.props ./
 COPY src/VortexApi/VortexApi.csproj src/VortexApi/
 RUN dotnet restore src/VortexApi/VortexApi.csproj
 
