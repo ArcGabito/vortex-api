@@ -19,6 +19,17 @@ public static class TokenRevalidator
         var userId = principal.UserId();
         var stamp = principal.FindFirst(VortexClaims.SecurityStamp)?.Value;
 
+        if (principal.IsIntegration())
+        {
+            var client = await db.IntegrationClients.AsNoTracking()
+                .Where(c => c.Id == userId)
+                .Select(c => new { c.IsActive, c.SecurityStamp, c.ExpiresAt, OrgActive = c.Organization.IsActive })
+                .SingleOrDefaultAsync();
+            if (client is null || !client.IsActive || !client.OrgActive || client.SecurityStamp != stamp || client.ExpiresAt <= now)
+                context.Fail("Aplicación de integración revocada.");
+            return;
+        }
+
         var user = await db.Users.AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => new { u.IsActive, u.SecurityStamp, OrgActive = u.Organization == null || u.Organization.IsActive })

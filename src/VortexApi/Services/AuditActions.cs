@@ -23,4 +23,9 @@ public static class AuditActions
     public const string MemberUpdated = "member.updated";
     public const string MemberRemoved = "member.removed";
     public const string ProductKeyRotated = "product.key_rotated";
+    public const string IntegrationCreated = "integration.created";
+    public const string IntegrationUpdated = "integration.updated";
+    public const string IntegrationSecretRotated = "integration.secret_rotated";
+    public const string IntegrationDeleted = "integration.deleted";
+    public const string IntegrationTokenFailed = "integration.token_failed";
 }

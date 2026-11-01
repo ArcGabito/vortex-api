@@ -62,6 +62,24 @@ public sealed class TokenService(SigningKeyProvider keys, IOptions<JwtOptions> o
         return Create(TokenAudiences.Offline, claims, expires, tokenType: "vortex-offline+jwt");
     }
 
+    /// <summary>Token OAuth2 (client_credentials) de una aplicación de integración. Sin refresh token: se pide otro al vencer.</summary>
+    public IssuedToken CreateIntegrationToken(IntegrationClient client, IReadOnlyCollection<string> scopes)
+    {
+        var claims = new List<Claim>
+        {
+            new(VortexClaims.Subject, client.Id.ToString()),
+            new(VortexClaims.ClientId, client.ClientId),
+            new(VortexClaims.Name, client.Name),
+            new(VortexClaims.Organization, client.OrganizationId.ToString()),
+            new(VortexClaims.TokenUse, VortexClaims.TokenUseIntegration),
+            new(VortexClaims.Source, client.Source),
+            new(VortexClaims.Scope, string.Join(' ', scopes)),
+            new(VortexClaims.SecurityStamp, client.SecurityStamp),
+        };
+        var expires = Cap(clock.GetUtcNow().AddMinutes(_options.IntegrationTokenMinutes), client.ExpiresAt);
+        return Create(TokenAudiences.Integration, claims, expires);
+    }
+
     public TokenValidationParameters ValidationParameters() => new()
     {
         ValidIssuer = _options.Issuer,
@@ -77,7 +95,7 @@ public sealed class TokenService(SigningKeyProvider keys, IOptions<JwtOptions> o
     };
 
     private static bool IsAccessAudience(string audience) =>
-        audience == TokenAudiences.Admin ||
+        audience == TokenAudiences.Admin || audience == TokenAudiences.Integration ||
         ProductCodes.Defaults.Keys.Any(code => audience == TokenAudiences.ForProduct(code));
 
     private static List<Claim> BaseUserClaims(User user)

@@ -24,6 +24,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<IntegrationEvent> IntegrationEvents => Set<IntegrationEvent>();
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<IntegrationClient> IntegrationClients => Set<IntegrationClient>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -120,6 +121,21 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
         ConfigureMasterData(b);
         ConfigureIntegration(b);
 
+        b.Entity<IntegrationClient>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(100);
+            e.Property(x => x.Slug).HasMaxLength(40);
+            e.Property(x => x.ClientId).HasMaxLength(64);
+            e.Property(x => x.SecretHash).HasMaxLength(64);
+            e.Property(x => x.SecretHint).HasMaxLength(8);
+            e.Property(x => x.SecurityStamp).HasMaxLength(64);
+            e.Ignore(x => x.Source);
+            e.HasIndex(x => x.ClientId).IsUnique();
+            e.HasIndex(x => new { x.OrganizationId, x.Slug }).IsUnique();
+            e.HasOne(x => x.Organization).WithMany()
+                .HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         // Los Id Guid se asignan en el constructor; así EF trata como nuevas (Added) las entidades
         // agregadas por navegación (p. ej. product.Members.Add) en lugar de intentar un UPDATE.
         foreach (var entity in b.Model.GetEntityTypes())
@@ -200,7 +216,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
         b.Entity<ChangeEntry>(e =>
         {
             e.Property(x => x.EntityType).HasMaxLength(32);
-            e.Property(x => x.Source).HasMaxLength(16);
+            e.Property(x => x.Source).HasMaxLength(64);
             e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.EntityType, x.EntityId });
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
@@ -213,7 +229,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
         {
             e.Property(x => x.Type).HasMaxLength(100);
             e.Property(x => x.Category).HasMaxLength(50);
-            e.Property(x => x.Source).HasMaxLength(16);
+            e.Property(x => x.Source).HasMaxLength(64);
             e.Property(x => x.SubjectType).HasMaxLength(50);
             e.Property(x => x.SubjectId).HasMaxLength(100);
             e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
@@ -225,7 +241,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
         {
             e.Property(x => x.Name).HasMaxLength(100);
             e.Property(x => x.Url).HasMaxLength(500);
-            e.Property(x => x.ReceiverProduct).HasMaxLength(16);
+            e.Property(x => x.ReceiverProduct).HasMaxLength(64);
             e.Property(x => x.Secret).HasMaxLength(100);
             e.HasIndex(x => x.OrganizationId);
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);

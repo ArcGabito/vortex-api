@@ -8,6 +8,7 @@ public sealed class JwtOptions
     public int AccessTokenMinutes { get; set; } = 15;
     public int ProductRefreshTokenDays { get; set; } = 30;
     public int AdminRefreshTokenHours { get; set; } = 12;
+    public int IntegrationTokenMinutes { get; set; } = 60;
 
     /// <summary>Llave RSA privada en PEM (p. ej. desde Azure Key Vault). Tiene prioridad sobre <see cref="SigningKeyPath"/>.</summary>
     public string? SigningKeyPem { get; set; }
@@ -22,6 +23,7 @@ public sealed class JwtOptions
 public static class TokenAudiences
 {
     public const string Admin = "vortex-admin";
+    public const string Integration = "vortex-integration";
     public const string Offline = "vortex-offline";
 
     public static string ForProduct(string productCode) => $"vortex-{productCode.ToLowerInvariant()}";
@@ -44,7 +46,11 @@ public static class VortexClaims
     public const string Device = "dev";
     public const string DeviceHash = "dev_hash";
     public const string SecurityStamp = "sst";
+    public const string Scope = "scope";
+    public const string ClientId = "client_id";
+    public const string Source = "src";
 
     public const string TokenUseAdmin = "admin";
     public const string TokenUseProduct = "product";
+    public const string TokenUseIntegration = "integration";
 }

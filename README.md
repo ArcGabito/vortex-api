@@ -10,6 +10,7 @@ este hub permite usarlos juntos o reemplazar uno por otro sin perder usuarios ni
 | 2. Datos maestros | Clientes/proveedores, artículos, sedes/almacenes y datos de la empresa, con feed de cambios | ✅ |
 | 3. Eventos de integración | Publicar y consumir eventos entre sistemas (`sale.completed`, `stock.adjusted`, …) y webhooks | ✅ |
 | 4. Sincronización en el SDK | Sesión con renovación automática y sincronización offline-first para las apps MAUI | ✅ |
+| 5. Integraciones externas | Aplicaciones de terceros con OAuth2 `client_credentials`, scopes, límite por aplicación y documentación pública | ✅ |
 
 ## Estructura
 
@@ -171,6 +172,24 @@ app.MapPost("/hooks/vortex", async (HttpRequest req) =>
 });
 ```
 
+## Integraciones externas
+
+Cualquier sistema externo (tienda online, facturación electrónica, pasarela de pago, BI) puede integrarse con la
+suite sin ser un sistema Vortex:
+
+1. El OrgAdmin registra la aplicación en `POST /api/admin/integrations` con los **scopes** que necesita
+   (`master.read`, `master.write`, `events.read`, `events.publish` o `events.publish:order.*`, `webhooks.manage`)
+   y recibe `clientId` + `clientSecret`.
+2. La aplicación pide tokens con **OAuth 2.0 client credentials** en `POST /connect/token`; funciona con cualquier
+   cliente OAuth estándar y con herramientas como n8n, Make, Zapier o Power Automate.
+3. Usa los mismos endpoints de datos maestros, eventos y webhooks, limitada a sus scopes y a su organización.
+   Lo que escribe queda marcado como `source: "EXT:<slug>"`.
+
+Rotar el secreto, cambiar scopes o desactivar la aplicación invalida sus tokens al instante. Cada aplicación tiene
+su propio límite de peticiones (429 con `Retry-After`). La referencia de la API es pública en `/docs`.
+
+**Guía para desarrolladores con ejemplos en curl, C#, JavaScript y Python: [docs/INTEGRACIONES.md](docs/INTEGRACIONES.md).**
+
 ## Seguridad
 
 1. **Sistema reconocido**: el login exige `X-Vortex-Product` y `X-Vortex-Product-Key`.
@@ -203,7 +222,7 @@ dotnet run --launch-profile http          # http://localhost:5299 (aplica migrac
 ```
 
 En `Development`:
-- Documentación interactiva: http://localhost:5299/scalar/v1 (OpenAPI en `/openapi/v1.json`).
+- Documentación interactiva: http://localhost:5299/docs (OpenAPI en `/openapi/v1.json`).
 - PlatformAdmin: `admin@vortex.local` / `Vortex-Admin-2026!`.
 - Claves de sistema: `vxp_erp_dev_key_change_me`, `vxp_crm_…`, `vxp_wms_…`, `vxp_pos_…`.
 - La llave de firma se genera en `keys/dev-signing-key.pem` (ignorado por git).
@@ -264,6 +283,20 @@ Pruebas: `dotnet test` en la raíz.
 | POST | `/api/admin/webhooks/{id}/rotate-secret` | OrgAdmin | Nuevo secreto. |
 | GET | `/api/admin/webhooks/{id}/deliveries?status=` | OrgAdmin | Historial de entregas. |
 | POST | `/api/admin/webhooks/{id}/deliveries/{deliveryId}/retry` | OrgAdmin | Reencolar una entrega. |
+
+Las aplicaciones de integración también pueden usar estos endpoints según sus scopes: `events.read` para leer,
+`events.publish[:patrón]` para publicar y `webhooks.manage` para administrar **sus propios** webhooks.
+
+### Integraciones externas
+
+| Método | Ruta | Quién | Descripción |
+|---|---|---|---|
+| POST | `/connect/token` | aplicación | OAuth2 `client_credentials` (Basic o en el cuerpo). |
+| GET | `/api/admin/integrations/scopes` | OrgAdmin | Scopes disponibles. |
+| GET, POST | `/api/admin/integrations` | OrgAdmin | Listar / registrar (devuelve `clientId` y `clientSecret`). |
+| GET, PUT, DELETE | `/api/admin/integrations/{id}` | OrgAdmin | Ver / cambiar scopes o desactivar / eliminar. |
+| POST | `/api/admin/integrations/{id}/rotate-secret` | OrgAdmin | Nuevo secreto; revoca los tokens emitidos. |
+| GET | `/docs`, `/openapi/v1.json` | público | Referencia interactiva y especificación OpenAPI. |
 
 Los errores se devuelven como ProblemDetails con un `code` estable (`product_not_enabled`, `product_disabled`,
 `access_expired`, `no_access`, `user_limit_reached`, `device_limit_reached`, `device_revoked`,
@@ -390,6 +423,9 @@ En ese caso la revocación surte efecto al vencer el access token (máx. 15 min)
   (la imagen Docker ya lo trae activado).
 - `Webhooks:*`: `DispatcherEnabled` (por defecto true; puede correr en todas las réplicas), `PollIntervalSeconds`,
   `MaxAttempts`, `TimeoutSeconds`, `AllowPrivateNetworks` (solo on-premise) y `AllowInsecureHttp` (solo desarrollo).
+- `RateLimiting:IntegrationPermitsPerMinute` (por defecto 600) por aplicación de integración;
+  `Jwt:IntegrationTokenMinutes` (por defecto 60).
+- `Docs:Enabled` (por defecto true) publica `/docs` y `/openapi/v1.json`.
 
 ### Docker / Azure Container Apps
 

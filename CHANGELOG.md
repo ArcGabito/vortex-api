@@ -7,6 +7,27 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+- **Fase 5: integraciones externas.** Aplicaciones de terceros registradas por el OrgAdmin
+  (`/api/admin/integrations`) que se autentican con OAuth 2.0 `client_credentials` en `POST /connect/token`
+  (`client_secret_basic` y `client_secret_post`, errores según RFC 6749).
+- Scopes `master.read`, `master.write`, `events.read`, `events.publish`, `events.publish:<patrón>` y
+  `webhooks.manage`; tokens con un subconjunto de scopes; todo lo escrito queda con `source: "EXT:<slug>"`.
+- Revocación inmediata al rotar el secreto, cambiar scopes o desactivar la aplicación.
+- Webhooks propios de cada aplicación (`webhooks.manage`), que nunca reciben sus propios eventos.
+- Límite de peticiones por aplicación (`RateLimiting:IntegrationPermitsPerMinute`, 429 con `Retry-After`).
+- Documentación pública: `/docs` (Scalar) y `/openapi/v1.json` en todos los entornos (`Docs:Enabled`), con el
+  esquema OAuth2 y sus scopes; discovery con `token_endpoint`, `grant_types_supported` y `scopes_supported`.
+- Guía para desarrolladores `docs/INTEGRACIONES.md` con ejemplos en curl, C#, JavaScript y Python.
+- Dependabot para NuGet, GitHub Actions y Docker (`.github/dependabot.yml`).
+- Migración `IntegrationClients`.
+
+### Changed
+- El catálogo de eventos (`GET /api/events/catalog`) es público.
+- Las columnas `Source` de cambios y eventos, y `ReceiverProduct` de webhooks, pasan de 16 a 64 caracteres.
+- La documentación interactiva pasa de `/scalar/v1` (solo desarrollo) a `/docs`.
+- El límite de peticiones se aplica después de la autenticación (necesario para limitar por aplicación).
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

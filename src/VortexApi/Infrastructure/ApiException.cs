@@ -49,4 +49,8 @@ public static class ErrorCodes
     public const string InvalidEventData = "invalid_event_data";
     public const string EventIdInUse = "event_id_in_use";
     public const string InvalidWebhookUrl = "invalid_webhook_url";
+
+    public const string InsufficientScope = "insufficient_scope";
+    public const string InvalidScope = "invalid_scope";
+    public const string SlugInUse = "slug_in_use";
 }

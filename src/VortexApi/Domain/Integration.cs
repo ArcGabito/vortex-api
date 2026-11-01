@@ -55,6 +55,9 @@ public class WebhookSubscription
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>Aplicación de integración que registró el webhook (null si lo creó el OrgAdmin).</summary>
+    public Guid? OwnerClientId { get; set; }
+
     public bool Accepts(IntegrationEvent e) =>
         IsActive && e.Source != ReceiverProduct && EventTypes.Any(p => EventTypePattern.Matches(p, e.Type));
 }

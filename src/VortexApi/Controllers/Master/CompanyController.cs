@@ -14,7 +14,7 @@ namespace VortexApi.Controllers.Master;
 /// <summary>Datos de la empresa (razón social, RUC, moneda, impuesto, zona horaria) que usan todos los sistemas.</summary>
 [ApiController]
 [Route("api/master/company")]
-[Authorize(Policy = Policies.OrganizationData)]
+[Authorize(Policy = Policies.MasterRead)]
 public sealed class CompanyController(VortexDbContext db, MasterDataWriter writer) : ControllerBase
 {
     /// <summary>Si aún no se configuró, devuelve valores por defecto tomados de la organización (versión 0).</summary>

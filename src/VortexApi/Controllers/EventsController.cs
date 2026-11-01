@@ -18,12 +18,11 @@ namespace VortexApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/events")]
-[Authorize(Policy = Policies.OrganizationData)]
 public sealed class EventsController(VortexDbContext db, EventPublisher publisher, TimeProvider clock) : ControllerBase
 {
     /// <summary>Publica un evento. Devuelve 201 si es nuevo y 200 si ese <c>id</c> ya estaba registrado.</summary>
     [HttpPost]
-    [Authorize(Policy = Policies.ProductClient)]
+    [Authorize(Policy = Policies.EventsPublish)]
     public async Task<ActionResult<EventDto>> Publish(PublishEventRequest request)
     {
         var (e, created) = await PublishOneAsync(request);
@@ -35,7 +34,7 @@ public sealed class EventsController(VortexDbContext db, EventPublisher publishe
     /// por separado: un error no impide registrar los demás.
     /// </summary>
     [HttpPost("batch")]
-    [Authorize(Policy = Policies.ProductClient)]
+    [Authorize(Policy = Policies.EventsPublish)]
     public async Task<IReadOnlyList<PublishResult>> PublishBatch(PublishBatchRequest request)
     {
         var results = new List<PublishResult>(request.Events.Count);
@@ -58,6 +57,7 @@ public sealed class EventsController(VortexDbContext db, EventPublisher publishe
     /// <param name="types">Patrones separados por coma: tipo exacto (<c>sale.completed</c>), categoría (<c>sale.*</c>) o <c>*</c>.</param>
     /// <param name="excludeSource">No devolver los eventos publicados por este sistema (normalmente, el propio).</param>
     [HttpGet]
+    [Authorize(Policy = Policies.EventsRead)]
     public async Task<EventFeedResponse> Feed(long since = 0, string? types = null, string? excludeSource = null, int limit = 200)
     {
         var orgId = User.OrganizationId()!.Value;
@@ -92,6 +92,7 @@ public sealed class EventsController(VortexDbContext db, EventPublisher publishe
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.EventsRead)]
     public async Task<EventDto> Get(Guid id)
     {
         var orgId = User.OrganizationId()!.Value;
@@ -102,6 +103,7 @@ public sealed class EventsController(VortexDbContext db, EventPublisher publishe
 
     /// <summary>Eventos conocidos de la suite, con quién los publica y quién los consume.</summary>
     [HttpGet("catalog")]
+    [AllowAnonymous]
     public IReadOnlyList<EventCatalog.Entry> Catalog() => EventCatalog.Entries;
 
     private async Task<(IntegrationEvent Event, bool Created)> PublishOneAsync(PublishEventRequest request)
@@ -112,6 +114,9 @@ public sealed class EventsController(VortexDbContext db, EventPublisher publishe
             throw ApiException.BadRequest(ErrorCodes.InvalidEventType, "El tipo debe tener el formato categoria.accion (p. ej. sale.completed).");
         if (EventTypePattern.ReservedCategories.Contains(EventTypePattern.CategoryOf(type)))
             throw ApiException.BadRequest(ErrorCodes.InvalidEventType, "Las categorías master.* y hub.* las publica solo el hub.");
+        if (User.IsIntegration() && !IntegrationScopes.CanPublish(User.Scopes(), type))
+            throw new ApiException(StatusCodes.Status403Forbidden, ErrorCodes.InsufficientScope,
+                $"La aplicación no tiene permiso para publicar {type}.");
         if (request.Data.ValueKind != JsonValueKind.Object)
             throw ApiException.BadRequest(ErrorCodes.InvalidEventData, "data debe ser un objeto JSON.");
 
@@ -126,7 +131,7 @@ public sealed class EventsController(VortexDbContext db, EventPublisher publishe
         if (request.Id is { } id && await FindExistingAsync(id, orgId) is { } existing)
             return (existing, false);
 
-        var actor = new EventActor(orgId, MasterDataWriter.SourceOf(User), User.UserId(), User.DeviceId());
+        var actor = new EventActor(orgId, MasterDataWriter.SourceOf(User), User.ActingUserId(), User.DeviceId());
         var strategy = db.Database.CreateExecutionStrategy();
         try
         {
