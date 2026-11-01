@@ -1,7 +1,7 @@
 <Project>
   <!-- Versión común de la solución. Al publicar una versión, actualizar aquí y en CHANGELOG.md. -->
   <PropertyGroup>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Authors>ArcGabito</Authors>
     <Product>Vortex Hub</Product>
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
