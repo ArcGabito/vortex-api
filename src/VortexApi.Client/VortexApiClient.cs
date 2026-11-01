@@ -4,17 +4,17 @@ using System.Text.Json;
 
 namespace VortexApi.Client;
 
-public sealed class VortexLicensingOptions
+public sealed class VortexApiClientOptions
 {
     /// <summary>Código del sistema: ERP, CRM, WMS o POS.</summary>
     public required string ProductCode { get; init; }
 
-    /// <summary>Clave de aplicación del producto (generada en /api/admin/products/{code}/rotate-key).</summary>
+    /// <summary>Clave de aplicación del sistema (generada en /api/admin/products/{code}/rotate-key).</summary>
     public required string ProductKey { get; init; }
 }
 
-/// <summary>Cliente HTTP de la API de licencias para las apps Vortex.</summary>
-public sealed class VortexLicensingClient(HttpClient http, VortexLicensingOptions options)
+/// <summary>Cliente HTTP del hub Vortex para los sistemas de la suite.</summary>
+public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions options)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -36,13 +36,13 @@ public sealed class VortexLicensingClient(HttpClient http, VortexLicensingOption
             Content = JsonContent.Create(new { refreshToken, deviceId }, options: Json),
         }, ct)!;
 
-    /// <summary>Confirma con el servidor que la licencia sigue vigente y obtiene un license token renovado.</summary>
-    public Task<VortexHeartbeat> HeartbeatAsync(string accessToken, CancellationToken ct = default)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Post, "api/licensing/heartbeat");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        return SendAsync<VortexHeartbeat>(request, ct)!;
-    }
+    /// <summary>Confirma con el hub que el acceso sigue vigente y obtiene un offline token renovado.</summary>
+    public Task<VortexHeartbeat> HeartbeatAsync(string accessToken, CancellationToken ct = default) =>
+        SendAsync<VortexHeartbeat>(Authorized(HttpMethod.Post, "api/access/heartbeat", accessToken), ct)!;
+
+    /// <summary>Sistemas de la suite a los que el usuario puede entrar (para un selector de sistemas).</summary>
+    public Task<IReadOnlyList<VortexAvailableProduct>> GetAvailableProductsAsync(string accessToken, CancellationToken ct = default) =>
+        SendAsync<IReadOnlyList<VortexAvailableProduct>>(Authorized(HttpMethod.Get, "api/access/products", accessToken), ct)!;
 
     public async Task LogoutAsync(string refreshToken, CancellationToken ct = default) =>
         await SendAsync<object>(new HttpRequestMessage(HttpMethod.Post, "api/auth/logout")
@@ -50,9 +50,16 @@ public sealed class VortexLicensingClient(HttpClient http, VortexLicensingOption
             Content = JsonContent.Create(new { refreshToken }, options: Json),
         }, ct);
 
-    /// <summary>JWKS con las llaves públicas; guárdelo junto al license token para validar sin conexión.</summary>
+    /// <summary>JWKS con las llaves públicas; guárdelo junto al offline token para validar sin conexión.</summary>
     public Task<string> GetSigningKeysAsync(CancellationToken ct = default) =>
         http.GetStringAsync(".well-known/jwks.json", ct);
+
+    private static HttpRequestMessage Authorized(HttpMethod method, string url, string accessToken)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return request;
+    }
 
     private async Task<T?> SendAsync<T>(HttpRequestMessage request, CancellationToken ct)
     {

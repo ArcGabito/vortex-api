@@ -20,42 +20,46 @@ public sealed class TokenService(SigningKeyProvider keys, IOptions<JwtOptions> o
         return Create(TokenAudiences.Admin, claims, clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes));
     }
 
-    public IssuedToken CreateProductAccessToken(User user, License license, DeviceActivation device)
+    public IssuedToken CreateProductAccessToken(User user, ProductMember member, Device device)
     {
+        var access = member.OrganizationProduct;
         var claims = BaseUserClaims(user);
         claims.Add(new(VortexClaims.TokenUse, VortexClaims.TokenUseProduct));
-        claims.Add(new(VortexClaims.Product, license.Product.Code));
-        claims.Add(new(VortexClaims.License, license.Id.ToString()));
-        claims.Add(new(VortexClaims.Plan, license.Plan));
+        claims.Add(new(VortexClaims.Product, access.Product.Code));
+        claims.Add(new(VortexClaims.Access, access.Id.ToString()));
         claims.Add(new(VortexClaims.Device, device.Id.ToString()));
-        claims.AddRange(license.Features.Select(f => new Claim(VortexClaims.Features, f)));
+        if (member.Role is not null)
+            claims.Add(new(VortexClaims.ProductRole, member.Role));
+        claims.AddRange(access.Features.Select(f => new Claim(VortexClaims.Features, f)));
 
-        var expires = Min(clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes), license.ExpiresAt);
-        return Create(TokenAudiences.ForProduct(license.Product.Code), claims, expires);
+        var expires = Cap(clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes), access.ExpiresAt);
+        return Create(TokenAudiences.ForProduct(access.Product.Code), claims, expires);
     }
 
     /// <summary>
-    /// Comprobante firmado que la app guarda localmente para operar sin conexión durante
-    /// <see cref="License.OfflineGraceDays"/>. Nunca vence después que la licencia.
+    /// Comprobante firmado que el sistema guarda localmente para operar sin conexión durante
+    /// <see cref="OrganizationProduct.OfflineGraceDays"/>. Nunca vence después que el acceso.
     /// </summary>
-    public IssuedToken CreateLicenseToken(User user, License license, DeviceActivation device)
+    public IssuedToken CreateOfflineToken(User user, ProductMember member, Device device)
     {
+        var access = member.OrganizationProduct;
         var claims = new List<Claim>
         {
             new(VortexClaims.Subject, user.Id.ToString()),
-            new(VortexClaims.Organization, license.OrganizationId.ToString()),
-            new(VortexClaims.OrganizationName, license.Organization.Name),
-            new(VortexClaims.Product, license.Product.Code),
-            new(VortexClaims.License, license.Id.ToString()),
-            new(VortexClaims.LicenseKey, license.LicenseKey),
-            new(VortexClaims.Plan, license.Plan),
-            new(VortexClaims.LicenseExpires, license.ExpiresAt.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new(VortexClaims.Organization, access.OrganizationId.ToString()),
+            new(VortexClaims.OrganizationName, access.Organization.Name),
+            new(VortexClaims.Product, access.Product.Code),
+            new(VortexClaims.Access, access.Id.ToString()),
             new(VortexClaims.DeviceHash, device.DeviceHash),
         };
-        claims.AddRange(license.Features.Select(f => new Claim(VortexClaims.Features, f)));
+        if (member.Role is not null)
+            claims.Add(new(VortexClaims.ProductRole, member.Role));
+        if (access.ExpiresAt is { } accessExpires)
+            claims.Add(new(VortexClaims.AccessExpires, accessExpires.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64));
+        claims.AddRange(access.Features.Select(f => new Claim(VortexClaims.Features, f)));
 
-        var expires = Min(clock.GetUtcNow().AddDays(license.OfflineGraceDays), license.ExpiresAt);
-        return Create(TokenAudiences.License, claims, expires, tokenType: "vortex-license+jwt");
+        var expires = Cap(clock.GetUtcNow().AddDays(access.OfflineGraceDays), access.ExpiresAt);
+        return Create(TokenAudiences.Offline, claims, expires, tokenType: "vortex-offline+jwt");
     }
 
     public TokenValidationParameters ValidationParameters() => new()
@@ -110,5 +114,6 @@ public sealed class TokenService(SigningKeyProvider keys, IOptions<JwtOptions> o
         return new IssuedToken(token, expires);
     }
 
-    private static DateTimeOffset Min(DateTimeOffset a, DateTimeOffset b) => a < b ? a : b;
+    private static DateTimeOffset Cap(DateTimeOffset value, DateTimeOffset? max) =>
+        max is { } m && m < value ? m : value;
 }

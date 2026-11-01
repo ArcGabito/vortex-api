@@ -14,8 +14,30 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - Workflow de GitHub Actions (`.github/workflows/ci.yml`): restore, build y pruebas en cada push y
   pull request a `main`, más build de la imagen Docker.
 - Sección de despliegue en Docker / Azure Container Apps en el README.
+- Licencia AGPL-3.0, igual que los sistemas de la suite.
+- `GET /api/access/products`: sistemas de la suite a los que el usuario puede entrar (selector de sistemas).
+- Rol por sistema (`ProductMember.role`, claim `prd_role`), p. ej. `cajero` en POS y `contador` en ERP.
+- Asignación automática (`autoAssignUsers`): todo usuario de la organización obtiene acceso en su primer login.
+- `VortexApiClient.GetAvailableProductsAsync` en la librería cliente.
 
 ### Changed
+- **Cambio de enfoque (incompatible con 0.1.0):** la API pasa de ser un gestor de licencias antipiratería
+  a ser el hub de la suite (fase 1: identidad y accesos), en coherencia con sistemas open source.
+  - `License` → `OrganizationProduct` (sistema habilitado para la organización). Se eliminan `licenseKey`,
+    `plan`, `startsAt` y los estados `Suspended`/`Revoked`; se reemplazan por `isEnabled` + `disabledReason`.
+  - `LicenseSeat` → `ProductMember`, `DeviceActivation` → `Device`.
+  - `expiresAt`, `maxUsers` (antes `maxSeats`) y `maxDevicesPerUser` son opcionales; `null` = permanente / sin límite.
+  - `offlineGraceDays` por defecto pasa de 3 a 7 días.
+  - Rutas de administración: `/api/admin/licenses/*` → `/api/admin/organizations/{orgId}/products/{code}`
+    (`PUT` para habilitar/configurar, `…/members/{userId}`, `…/devices/{deviceId}`).
+  - `/api/licensing/heartbeat` → `/api/access/heartbeat`.
+  - *License token* → *offline token* (`typ: vortex-offline+jwt`, audiencia `vortex-offline`, claim `acc`).
+  - Códigos de error: `no_license` → `product_not_enabled`, `license_suspended`/`license_revoked` → `product_disabled`,
+    `license_expired` → `access_expired`, `no_seat` → `no_access`, `seat_limit_reached` → `user_limit_reached`,
+    `seats_in_use` → `limit_in_use`.
+  - Librería cliente: `VortexLicensingClient` → `VortexApiClient`, `OfflineLicenseValidator` → `OfflineAccessValidator`,
+    `VortexLicense` → `VortexAccess`, `IsLicenseDenied` → `IsAccessDenied`.
+  - Migración inicial regenerada; base de datos de desarrollo `VortexLicensing` → `VortexHub`.
 - Con `ForwardedHeaders:Enabled` ya no se aplica `UseHttpsRedirection`: detrás del ingress de
   Azure Container Apps el TLS se termina en el proxy.
 

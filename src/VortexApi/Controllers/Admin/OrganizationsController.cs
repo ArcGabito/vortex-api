@@ -24,7 +24,7 @@ public sealed class OrganizationsController(VortexDbContext db, AuditService aud
 
         return query.OrderBy(o => o.Name)
             .Select(o => new OrganizationDto(o.Id, o.Name, o.TaxId, o.ContactEmail, o.IsActive, o.CreatedAt,
-                o.Users.Count, o.Licenses.Count))
+                o.Users.Count, o.Products.Where(p => p.IsEnabled).Select(p => p.Product.Code).OrderBy(c => c).ToList()))
             .ToPageAsync(page, pageSize, x => x);
     }
 
@@ -32,7 +32,7 @@ public sealed class OrganizationsController(VortexDbContext db, AuditService aud
     public async Task<OrganizationDto> Get(Guid id) =>
         await Scoped().Where(o => o.Id == id)
             .Select(o => new OrganizationDto(o.Id, o.Name, o.TaxId, o.ContactEmail, o.IsActive, o.CreatedAt,
-                o.Users.Count, o.Licenses.Count))
+                o.Users.Count, o.Products.Where(p => p.IsEnabled).Select(p => p.Product.Code).OrderBy(c => c).ToList()))
             .SingleOrDefaultAsync() ?? throw ApiException.NotFound("Organización");
 
     [HttpPost]

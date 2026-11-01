@@ -93,35 +93,33 @@ namespace VortexApi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Licenses",
+                name: "OrganizationProducts",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LicenseKey = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     OrganizationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     ProductId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Plan = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    MaxSeats = table.Column<int>(type: "int", nullable: false),
-                    MaxDevicesPerUser = table.Column<int>(type: "int", nullable: false),
+                    IsEnabled = table.Column<bool>(type: "bit", nullable: false),
+                    DisabledReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    AutoAssignUsers = table.Column<bool>(type: "bit", nullable: false),
+                    MaxUsers = table.Column<int>(type: "int", nullable: true),
+                    MaxDevicesPerUser = table.Column<int>(type: "int", nullable: true),
                     OfflineGraceDays = table.Column<int>(type: "int", nullable: false),
                     Features = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    StartsAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    ExpiresAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    StatusReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    ExpiresAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Licenses", x => x.Id);
+                    table.PrimaryKey("PK_OrganizationProducts", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Licenses_Organizations_OrganizationId",
+                        name: "FK_OrganizationProducts_Organizations_OrganizationId",
                         column: x => x.OrganizationId,
                         principalTable: "Organizations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_Licenses_Products_ProductId",
+                        name: "FK_OrganizationProducts_Products_ProductId",
                         column: x => x.ProductId,
                         principalTable: "Products",
                         principalColumn: "Id",
@@ -129,25 +127,26 @@ namespace VortexApi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "LicenseSeats",
+                name: "ProductMembers",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LicenseId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    OrganizationProductId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    AssignedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    AddedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_LicenseSeats", x => x.Id);
+                    table.PrimaryKey("PK_ProductMembers", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_LicenseSeats_Licenses_LicenseId",
-                        column: x => x.LicenseId,
-                        principalTable: "Licenses",
+                        name: "FK_ProductMembers_OrganizationProducts_OrganizationProductId",
+                        column: x => x.OrganizationProductId,
+                        principalTable: "OrganizationProducts",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_LicenseSeats_Users_UserId",
+                        name: "FK_ProductMembers_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -155,11 +154,11 @@ namespace VortexApi.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "DeviceActivations",
+                name: "Devices",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    SeatId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MemberId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     DeviceHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     DeviceName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     Platform = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
@@ -170,11 +169,11 @@ namespace VortexApi.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeviceActivations", x => x.Id);
+                    table.PrimaryKey("PK_Devices", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_DeviceActivations_LicenseSeats_SeatId",
-                        column: x => x.SeatId,
-                        principalTable: "LicenseSeats",
+                        name: "FK_Devices_ProductMembers_MemberId",
+                        column: x => x.MemberId,
+                        principalTable: "ProductMembers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -187,7 +186,7 @@ namespace VortexApi.Data.Migrations
                     TokenHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     FamilyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    DeviceActivationId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    DeviceId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ProductId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     ExpiresAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
@@ -198,9 +197,9 @@ namespace VortexApi.Data.Migrations
                 {
                     table.PrimaryKey("PK_RefreshTokens", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_RefreshTokens_DeviceActivations_DeviceActivationId",
-                        column: x => x.DeviceActivationId,
-                        principalTable: "DeviceActivations",
+                        name: "FK_RefreshTokens_Devices_DeviceId",
+                        column: x => x.DeviceId,
+                        principalTable: "Devices",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
@@ -222,35 +221,30 @@ namespace VortexApi.Data.Migrations
                 column: "Timestamp");
 
             migrationBuilder.CreateIndex(
-                name: "IX_DeviceActivations_SeatId_DeviceHash",
-                table: "DeviceActivations",
-                columns: new[] { "SeatId", "DeviceHash" });
+                name: "IX_Devices_MemberId_DeviceHash",
+                table: "Devices",
+                columns: new[] { "MemberId", "DeviceHash" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Licenses_LicenseKey",
-                table: "Licenses",
-                column: "LicenseKey",
+                name: "IX_OrganizationProducts_OrganizationId_ProductId",
+                table: "OrganizationProducts",
+                columns: new[] { "OrganizationId", "ProductId" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Licenses_OrganizationId_ProductId",
-                table: "Licenses",
-                columns: new[] { "OrganizationId", "ProductId" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Licenses_ProductId",
-                table: "Licenses",
+                name: "IX_OrganizationProducts_ProductId",
+                table: "OrganizationProducts",
                 column: "ProductId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_LicenseSeats_LicenseId_UserId",
-                table: "LicenseSeats",
-                columns: new[] { "LicenseId", "UserId" },
+                name: "IX_ProductMembers_OrganizationProductId_UserId",
+                table: "ProductMembers",
+                columns: new[] { "OrganizationProductId", "UserId" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_LicenseSeats_UserId",
-                table: "LicenseSeats",
+                name: "IX_ProductMembers_UserId",
+                table: "ProductMembers",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -260,9 +254,9 @@ namespace VortexApi.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_RefreshTokens_DeviceActivationId",
+                name: "IX_RefreshTokens_DeviceId",
                 table: "RefreshTokens",
-                column: "DeviceActivationId");
+                column: "DeviceId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_FamilyId",
@@ -302,13 +296,13 @@ namespace VortexApi.Data.Migrations
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
-                name: "DeviceActivations");
+                name: "Devices");
 
             migrationBuilder.DropTable(
-                name: "LicenseSeats");
+                name: "ProductMembers");
 
             migrationBuilder.DropTable(
-                name: "Licenses");
+                name: "OrganizationProducts");
 
             migrationBuilder.DropTable(
                 name: "Users");

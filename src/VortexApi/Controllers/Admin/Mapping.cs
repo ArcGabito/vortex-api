@@ -11,12 +11,11 @@ internal static class Mapping
         u.Id, u.OrganizationId, u.Email, u.FullName, u.Role.ToString(), u.IsActive, u.LockoutEnd > now,
         u.CreatedAt, u.LastLoginAt);
 
-    public static LicenseDto ToDto(this License l, int usedSeats, DateTimeOffset now) => new(
-        l.Id, l.LicenseKey, l.OrganizationId, l.Organization.Name, l.Product.Code, l.Plan, l.MaxSeats, usedSeats,
-        l.MaxDevicesPerUser, l.OfflineGraceDays, l.Features, l.StartsAt, l.ExpiresAt, l.Status.ToString(),
-        l.StatusReason, l.IsValidAt(now));
+    public static OrganizationProductDto ToDto(this OrganizationProduct p, int members, DateTimeOffset now) => new(
+        p.Id, p.OrganizationId, p.Product.Code, p.Product.Name, p.IsEnabled, p.DisabledReason, p.AutoAssignUsers,
+        p.MaxUsers, members, p.MaxDevicesPerUser, p.OfflineGraceDays, p.Features, p.ExpiresAt, p.IsUsableAt(now));
 
-    public static DeviceDto ToDto(this DeviceActivation d) => new(
+    public static DeviceDto ToDto(this Device d) => new(
         d.Id, d.DeviceName, d.Platform, d.ActivatedAt, d.LastSeenAt, d.LastIp, d.RevokedAt is not null);
 
     public static async Task<PagedResult<TOut>> ToPageAsync<TIn, TOut>(

@@ -31,7 +31,7 @@ public sealed record OrganizationRequest(
 
 public sealed record OrganizationDto(
     Guid Id, string Name, string? TaxId, string? ContactEmail, bool IsActive, DateTimeOffset CreatedAt,
-    int UserCount, int LicenseCount);
+    int UserCount, IReadOnlyList<string> EnabledProducts);
 
 // Usuarios
 
@@ -53,44 +53,33 @@ public sealed record UserDto(
     Guid Id, Guid? OrganizationId, string Email, string FullName, string Role, bool IsActive,
     bool IsLockedOut, DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt);
 
-// Licencias
+// Sistemas habilitados por organización
 
-public sealed record CreateLicenseRequest(
-    [Required] Guid OrganizationId,
-    [Required, MaxLength(16)] string ProductCode,
-    [Required, MaxLength(50)] string Plan,
-    [Range(1, 100_000)] int MaxSeats,
-    [Range(1, 100)] int MaxDevicesPerUser,
-    [Range(0, 30)] int OfflineGraceDays,
-    DateTimeOffset? StartsAt,
-    [Required] DateTimeOffset ExpiresAt,
-    List<string>? Features);
+/// <summary>Habilita o configura un sistema para la organización. Límites y vencimiento son opcionales.</summary>
+public sealed record OrganizationProductRequest(
+    bool IsEnabled = true,
+    [MaxLength(500)] string? DisabledReason = null,
+    bool AutoAssignUsers = false,
+    [Range(1, 1_000_000)] int? MaxUsers = null,
+    [Range(1, 1_000)] int? MaxDevicesPerUser = null,
+    [Range(0, 365)] int OfflineGraceDays = 7,
+    List<string>? Features = null,
+    DateTimeOffset? ExpiresAt = null);
 
-public sealed record UpdateLicenseRequest(
-    [Required, MaxLength(50)] string Plan,
-    [Range(1, 100_000)] int MaxSeats,
-    [Range(1, 100)] int MaxDevicesPerUser,
-    [Range(0, 30)] int OfflineGraceDays,
-    [Required] DateTimeOffset StartsAt,
-    [Required] DateTimeOffset ExpiresAt,
-    List<string>? Features);
+public sealed record MemberRequest([MaxLength(50)] string? Role);
 
-public sealed record LicenseStatusRequest([MaxLength(500)] string? Reason);
+public sealed record OrganizationProductDto(
+    Guid Id, Guid OrganizationId, string ProductCode, string ProductName, bool IsEnabled, string? DisabledReason,
+    bool AutoAssignUsers, int? MaxUsers, int Members, int? MaxDevicesPerUser, int OfflineGraceDays,
+    IReadOnlyList<string> Features, DateTimeOffset? ExpiresAt, bool IsUsableNow);
 
-public sealed record AssignSeatRequest([Required] Guid UserId);
-
-public sealed record LicenseDto(
-    Guid Id, string LicenseKey, Guid OrganizationId, string OrganizationName, string ProductCode, string Plan,
-    int MaxSeats, int UsedSeats, int MaxDevicesPerUser, int OfflineGraceDays, IReadOnlyList<string> Features,
-    DateTimeOffset StartsAt, DateTimeOffset ExpiresAt, string Status, string? StatusReason, bool IsValidNow);
-
-public sealed record SeatDto(Guid SeatId, Guid UserId, string Email, string FullName, DateTimeOffset AssignedAt,
-    IReadOnlyList<DeviceDto> Devices);
+public sealed record MemberDto(Guid MemberId, Guid UserId, string Email, string FullName, string? Role,
+    DateTimeOffset AddedAt, IReadOnlyList<DeviceDto> Devices);
 
 public sealed record DeviceDto(Guid Id, string? DeviceName, string? Platform, DateTimeOffset ActivatedAt,
     DateTimeOffset LastSeenAt, string? LastIp, bool IsRevoked);
 
-public sealed record LicenseDetailDto(LicenseDto License, IReadOnlyList<SeatDto> Seats);
+public sealed record OrganizationProductDetailDto(OrganizationProductDto Product, IReadOnlyList<MemberDto> Members);
 
 // Auditoría
 

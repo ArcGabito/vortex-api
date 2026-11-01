@@ -19,7 +19,7 @@ public sealed class VortexApiFactory : WebApplicationFactory<Program>
 {
     public const string AdminEmail = "root@vortex.test";
     public const string AdminPassword = "Root-Pass-2026!";
-    public const string Issuer = "https://licensing.vortex.test";
+    public const string Issuer = "https://hub.vortex.test";
     public static readonly Dictionary<string, string> ProductKeys = new()
     {
         ["ERP"] = "test-erp-key", ["CRM"] = "test-crm-key", ["WMS"] = "test-wms-key", ["POS"] = "test-pos-key",
@@ -91,4 +91,15 @@ public static class HttpExtensions
 
     public static async Task<string?> ErrorCodeAsync(this HttpResponseMessage response) =>
         (await response.ReadJsonAsync()).TryGetProperty("code", out var c) ? c.GetString() : null;
+}
+
+public static class HttpPutExtensions
+{
+    public static async Task<JsonElement> PutOkAsync(this HttpClient client, string url, object body)
+    {
+        var response = await client.PutAsJsonAsync(url, body, VortexApiFactory.Json);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"{url}: {(int)response.StatusCode} {await response.Content.ReadAsStringAsync()}");
+        return await response.ReadJsonAsync();
+    }
 }

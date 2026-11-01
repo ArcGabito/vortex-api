@@ -7,7 +7,7 @@ using VortexApi.Services;
 
 namespace VortexApi.Controllers;
 
-/// <summary>Autenticación de las apps Vortex (ERP, CRM, WMS, POS).</summary>
+/// <summary>Autenticación de los sistemas Vortex (ERP, CRM, WMS, POS).</summary>
 [ApiController]
 [Route("api/auth")]
 public sealed class AuthController(AuthService auth) : ControllerBase
@@ -16,8 +16,9 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     public const string ProductKeyHeader = "X-Vortex-Product-Key";
 
     /// <summary>
-    /// Inicia sesión desde una app Vortex. Valida la app, las credenciales, la licencia de la organización,
-    /// el puesto del usuario y el límite de equipos. Devuelve access token, refresh token y license token.
+    /// Inicia sesión desde un sistema Vortex. Valida el sistema, las credenciales, que el sistema esté habilitado
+    /// para la organización, el acceso del usuario y el límite de equipos (si lo hay). Devuelve access token,
+    /// refresh token y offline token.
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -28,7 +29,7 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         ProductLoginRequest request) =>
         auth.ProductLoginAsync(productCode, productKey, request);
 
-    /// <summary>Rota el refresh token y vuelve a validar licencia y equipo. Requiere el mismo <c>deviceId</c> del login.</summary>
+    /// <summary>Rota el refresh token y vuelve a validar el acceso. Requiere el mismo <c>deviceId</c> del login.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Auth)]
@@ -54,16 +55,20 @@ public sealed class AuthController(AuthService auth) : ControllerBase
 }
 
 [ApiController]
-[Route("api/licensing")]
+[Route("api/access")]
 [Authorize(Policy = Policies.ProductClient)]
-public sealed class LicensingController(AuthService auth) : ControllerBase
+public sealed class AccessController(AuthService auth) : ControllerBase
 {
     /// <summary>
-    /// Verificación periódica desde la app: confirma que licencia, usuario y equipo siguen vigentes y entrega un
-    /// license token renovado para el modo sin conexión.
+    /// Verificación periódica desde el sistema: confirma que usuario, acceso y equipo siguen vigentes y entrega un
+    /// offline token renovado para trabajar sin conexión.
     /// </summary>
     [HttpPost("heartbeat")]
-    public Task<HeartbeatResponse> Heartbeat() => auth.HeartbeatAsync(User.UserId(), User.DeviceActivationId()!.Value);
+    public Task<HeartbeatResponse> Heartbeat() => auth.HeartbeatAsync(User.UserId(), User.DeviceId()!.Value);
+
+    /// <summary>Sistemas de la suite a los que el usuario puede entrar (para mostrar un selector de sistemas).</summary>
+    [HttpGet("products")]
+    public Task<IReadOnlyList<AvailableProduct>> Products() => auth.GetAvailableProductsAsync(User.UserId());
 }
 
 [ApiController]

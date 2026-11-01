@@ -9,9 +9,9 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Organization> Organizations => Set<Organization>();
     public DbSet<User> Users => Set<User>();
-    public DbSet<License> Licenses => Set<License>();
-    public DbSet<LicenseSeat> LicenseSeats => Set<LicenseSeat>();
-    public DbSet<DeviceActivation> DeviceActivations => Set<DeviceActivation>();
+    public DbSet<OrganizationProduct> OrganizationProducts => Set<OrganizationProduct>();
+    public DbSet<ProductMember> ProductMembers => Set<ProductMember>();
+    public DbSet<Device> Devices => Set<Device>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
@@ -54,37 +54,35 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
                 .HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        b.Entity<License>(e =>
+        b.Entity<OrganizationProduct>(e =>
         {
-            e.Property(x => x.LicenseKey).HasMaxLength(64);
-            e.Property(x => x.Plan).HasMaxLength(50);
-            e.Property(x => x.StatusReason).HasMaxLength(500);
-            e.HasIndex(x => x.LicenseKey).IsUnique();
-            e.HasIndex(x => new { x.OrganizationId, x.ProductId });
-            e.HasOne(x => x.Organization).WithMany(o => o.Licenses)
+            e.Property(x => x.DisabledReason).HasMaxLength(500);
+            e.HasIndex(x => new { x.OrganizationId, x.ProductId }).IsUnique();
+            e.HasOne(x => x.Organization).WithMany(o => o.Products)
                 .HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Product).WithMany()
                 .HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        b.Entity<LicenseSeat>(e =>
+        b.Entity<ProductMember>(e =>
         {
-            e.HasIndex(x => new { x.LicenseId, x.UserId }).IsUnique();
-            e.HasOne(x => x.License).WithMany(l => l.Seats)
-                .HasForeignKey(x => x.LicenseId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.User).WithMany(u => u.Seats)
+            e.Property(x => x.Role).HasMaxLength(50);
+            e.HasIndex(x => new { x.OrganizationProductId, x.UserId }).IsUnique();
+            e.HasOne(x => x.OrganizationProduct).WithMany(p => p.Members)
+                .HasForeignKey(x => x.OrganizationProductId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User).WithMany(u => u.Memberships)
                 .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        b.Entity<DeviceActivation>(e =>
+        b.Entity<Device>(e =>
         {
             e.Property(x => x.DeviceHash).HasMaxLength(64);
             e.Property(x => x.DeviceName).HasMaxLength(200);
             e.Property(x => x.Platform).HasMaxLength(50);
             e.Property(x => x.LastIp).HasMaxLength(64);
-            e.HasIndex(x => new { x.SeatId, x.DeviceHash });
-            e.HasOne(x => x.Seat).WithMany(s => s.Devices)
-                .HasForeignKey(x => x.SeatId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.MemberId, x.DeviceHash });
+            e.HasOne(x => x.Member).WithMany(m => m.Devices)
+                .HasForeignKey(x => x.MemberId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<RefreshToken>(e =>
@@ -94,18 +92,9 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.HasIndex(x => x.FamilyId);
             e.HasOne(x => x.User).WithMany()
                 .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.DeviceActivation).WithMany()
-                .HasForeignKey(x => x.DeviceActivationId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.Device).WithMany()
+                .HasForeignKey(x => x.DeviceId).OnDelete(DeleteBehavior.SetNull);
         });
-
-        // Los Id Guid se asignan en el constructor; así EF trata como nuevas (Added) las entidades
-        // agregadas por navegación (p. ej. license.Seats.Add) en lugar de intentar un UPDATE.
-        foreach (var entity in b.Model.GetEntityTypes())
-        {
-            var key = entity.FindPrimaryKey()?.Properties.SingleOrDefault();
-            if (key?.ClrType == typeof(Guid))
-                key.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
-        }
 
         b.Entity<AuditLog>(e =>
         {
@@ -117,5 +106,14 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.HasIndex(x => x.Timestamp);
             e.HasIndex(x => x.OrganizationId);
         });
+
+        // Los Id Guid se asignan en el constructor; así EF trata como nuevas (Added) las entidades
+        // agregadas por navegación (p. ej. product.Members.Add) en lugar de intentar un UPDATE.
+        foreach (var entity in b.Model.GetEntityTypes())
+        {
+            var key = entity.FindPrimaryKey()?.Properties.SingleOrDefault();
+            if (key?.ClrType == typeof(Guid))
+                key.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
+        }
     }
 }

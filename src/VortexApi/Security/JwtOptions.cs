@@ -4,7 +4,7 @@ public sealed class JwtOptions
 {
     public const string Section = "Jwt";
 
-    public string Issuer { get; set; } = "https://licensing.vortex.local";
+    public string Issuer { get; set; } = "https://hub.vortex.local";
     public int AccessTokenMinutes { get; set; } = 15;
     public int ProductRefreshTokenDays { get; set; } = 30;
     public int AdminRefreshTokenHours { get; set; } = 12;
@@ -22,7 +22,7 @@ public sealed class JwtOptions
 public static class TokenAudiences
 {
     public const string Admin = "vortex-admin";
-    public const string License = "vortex-license";
+    public const string Offline = "vortex-offline";
 
     public static string ForProduct(string productCode) => $"vortex-{productCode.ToLowerInvariant()}";
 }
@@ -37,10 +37,9 @@ public static class VortexClaims
     public const string Organization = "org";
     public const string OrganizationName = "org_name";
     public const string Product = "prd";
-    public const string License = "lic";
-    public const string LicenseKey = "lic_key";
-    public const string LicenseExpires = "lic_exp";
-    public const string Plan = "plan";
+    public const string ProductRole = "prd_role";
+    public const string Access = "acc";
+    public const string AccessExpires = "acc_exp";
     public const string Features = "feat";
     public const string Device = "dev";
     public const string DeviceHash = "dev_hash";

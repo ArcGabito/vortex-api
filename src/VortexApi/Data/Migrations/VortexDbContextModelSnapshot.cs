@@ -72,7 +72,7 @@ namespace VortexApi.Data.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("VortexApi.Domain.DeviceActivation", b =>
+            modelBuilder.Entity("VortexApi.Domain.Device", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
@@ -96,6 +96,9 @@ namespace VortexApi.Data.Migrations
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Platform")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -103,100 +106,11 @@ namespace VortexApi.Data.Migrations
                     b.Property<DateTimeOffset?>("RevokedAt")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid>("SeatId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("SeatId", "DeviceHash");
+                    b.HasIndex("MemberId", "DeviceHash");
 
-                    b.ToTable("DeviceActivations");
-                });
-
-            modelBuilder.Entity("VortexApi.Domain.License", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.PrimitiveCollection<string>("Features")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LicenseKey")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<int>("MaxDevicesPerUser")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MaxSeats")
-                        .HasColumnType("int");
-
-                    b.Property<int>("OfflineGraceDays")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Plan")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("StartsAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StatusReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LicenseKey")
-                        .IsUnique();
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("OrganizationId", "ProductId");
-
-                    b.ToTable("Licenses");
-                });
-
-            modelBuilder.Entity("VortexApi.Domain.LicenseSeat", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTimeOffset>("AssignedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<Guid>("LicenseId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("LicenseId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("LicenseSeats");
+                    b.ToTable("Devices");
                 });
 
             modelBuilder.Entity("VortexApi.Domain.Organization", b =>
@@ -226,6 +140,56 @@ namespace VortexApi.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Organizations");
+                });
+
+            modelBuilder.Entity("VortexApi.Domain.OrganizationProduct", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AutoAssignUsers")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DisabledReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.PrimitiveCollection<string>("Features")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MaxDevicesPerUser")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MaxUsers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OfflineGraceDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("OrganizationId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("OrganizationProducts");
                 });
 
             modelBuilder.Entity("VortexApi.Domain.Product", b =>
@@ -258,6 +222,34 @@ namespace VortexApi.Data.Migrations
                     b.ToTable("Products");
                 });
 
+            modelBuilder.Entity("VortexApi.Domain.ProductMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("AddedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("OrganizationProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OrganizationProductId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ProductMembers");
+                });
+
             modelBuilder.Entity("VortexApi.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -266,7 +258,7 @@ namespace VortexApi.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
-                    b.Property<Guid?>("DeviceActivationId")
+                    b.Property<Guid?>("DeviceId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("ExpiresAt")
@@ -294,7 +286,7 @@ namespace VortexApi.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceActivationId");
+                    b.HasIndex("DeviceId");
 
                     b.HasIndex("FamilyId");
 
@@ -367,21 +359,21 @@ namespace VortexApi.Data.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("VortexApi.Domain.DeviceActivation", b =>
+            modelBuilder.Entity("VortexApi.Domain.Device", b =>
                 {
-                    b.HasOne("VortexApi.Domain.LicenseSeat", "Seat")
+                    b.HasOne("VortexApi.Domain.ProductMember", "Member")
                         .WithMany("Devices")
-                        .HasForeignKey("SeatId")
+                        .HasForeignKey("MemberId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Seat");
+                    b.Navigation("Member");
                 });
 
-            modelBuilder.Entity("VortexApi.Domain.License", b =>
+            modelBuilder.Entity("VortexApi.Domain.OrganizationProduct", b =>
                 {
                     b.HasOne("VortexApi.Domain.Organization", "Organization")
-                        .WithMany("Licenses")
+                        .WithMany("Products")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -397,30 +389,30 @@ namespace VortexApi.Data.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("VortexApi.Domain.LicenseSeat", b =>
+            modelBuilder.Entity("VortexApi.Domain.ProductMember", b =>
                 {
-                    b.HasOne("VortexApi.Domain.License", "License")
-                        .WithMany("Seats")
-                        .HasForeignKey("LicenseId")
+                    b.HasOne("VortexApi.Domain.OrganizationProduct", "OrganizationProduct")
+                        .WithMany("Members")
+                        .HasForeignKey("OrganizationProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("VortexApi.Domain.User", "User")
-                        .WithMany("Seats")
+                        .WithMany("Memberships")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("License");
+                    b.Navigation("OrganizationProduct");
 
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("VortexApi.Domain.RefreshToken", b =>
                 {
-                    b.HasOne("VortexApi.Domain.DeviceActivation", "DeviceActivation")
+                    b.HasOne("VortexApi.Domain.Device", "Device")
                         .WithMany()
-                        .HasForeignKey("DeviceActivationId")
+                        .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("VortexApi.Domain.User", "User")
@@ -429,7 +421,7 @@ namespace VortexApi.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("DeviceActivation");
+                    b.Navigation("Device");
 
                     b.Navigation("User");
                 });
@@ -444,26 +436,26 @@ namespace VortexApi.Data.Migrations
                     b.Navigation("Organization");
                 });
 
-            modelBuilder.Entity("VortexApi.Domain.License", b =>
-                {
-                    b.Navigation("Seats");
-                });
-
-            modelBuilder.Entity("VortexApi.Domain.LicenseSeat", b =>
-                {
-                    b.Navigation("Devices");
-                });
-
             modelBuilder.Entity("VortexApi.Domain.Organization", b =>
                 {
-                    b.Navigation("Licenses");
+                    b.Navigation("Products");
 
                     b.Navigation("Users");
                 });
 
+            modelBuilder.Entity("VortexApi.Domain.OrganizationProduct", b =>
+                {
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("VortexApi.Domain.ProductMember", b =>
+                {
+                    b.Navigation("Devices");
+                });
+
             modelBuilder.Entity("VortexApi.Domain.User", b =>
                 {
-                    b.Navigation("Seats");
+                    b.Navigation("Memberships");
                 });
 #pragma warning restore 612, 618
         }

@@ -10,7 +10,7 @@ public static class Policies
     /// <summary>Token de administración con rol PlatformAdmin (personal de Vortex).</summary>
     public const string PlatformAdmin = "platform-admin";
 
-    /// <summary>Token emitido a una app Vortex (ERP/CRM/WMS/POS) con licencia y equipo validados.</summary>
+    /// <summary>Token emitido a un sistema Vortex (ERP/CRM/WMS/POS) con acceso y equipo validados.</summary>
     public const string ProductClient = "product-client";
 
     public static void Configure(Microsoft.AspNetCore.Authorization.AuthorizationOptions o)

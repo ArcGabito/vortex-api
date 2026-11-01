@@ -23,12 +23,11 @@ public static class ErrorCodes
     public const string AccountLocked = "account_locked";
     public const string AccountDisabled = "account_disabled";
     public const string OrganizationDisabled = "organization_disabled";
-    public const string NoLicense = "no_license";
-    public const string NoSeat = "no_seat";
-    public const string LicenseExpired = "license_expired";
-    public const string LicenseNotStarted = "license_not_started";
-    public const string LicenseSuspended = "license_suspended";
-    public const string LicenseRevoked = "license_revoked";
+    public const string ProductNotEnabled = "product_not_enabled";
+    public const string ProductDisabled = "product_disabled";
+    public const string AccessExpired = "access_expired";
+    public const string NoAccess = "no_access";
+    public const string UserLimitReached = "user_limit_reached";
     public const string DeviceLimitReached = "device_limit_reached";
     public const string DeviceRevoked = "device_revoked";
     public const string DeviceMismatch = "device_mismatch";
@@ -36,7 +35,6 @@ public static class ErrorCodes
     public const string RefreshTokenReused = "refresh_token_reused";
 
     public const string EmailInUse = "email_in_use";
-    public const string SeatLimitReached = "seat_limit_reached";
-    public const string SeatsInUse = "seats_in_use";
+    public const string LimitInUse = "limit_in_use";
     public const string WeakPassword = "weak_password";
 }

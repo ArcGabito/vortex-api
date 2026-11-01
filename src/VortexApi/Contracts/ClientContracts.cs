@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VortexApi.Contracts;
 
-// Contratos usados por las apps Vortex (ERP, CRM, WMS, POS).
+// Contratos usados por los sistemas Vortex (ERP, CRM, WMS, POS).
 
 public sealed record ProductLoginRequest(
     [Required, EmailAddress, MaxLength(256)] string Email,
@@ -21,30 +21,33 @@ public sealed record ChangePasswordRequest(
     [Required] string CurrentPassword,
     [Required, MinLength(10), MaxLength(256)] string NewPassword);
 
-public sealed record LicenseInfo(
-    Guid LicenseId,
-    string LicenseKey,
+/// <summary>Acceso del usuario a un sistema en un equipo concreto.</summary>
+public sealed record ProductAccessInfo(
+    Guid AccessId,
     string Product,
-    string Plan,
     Guid OrganizationId,
     string OrganizationName,
+    string? Role,
     IReadOnlyList<string> Features,
-    DateTimeOffset ExpiresAt,
-    Guid DeviceActivationId);
+    DateTimeOffset? ExpiresAt,
+    Guid DeviceId);
 
 public sealed record ProductSessionResponse(
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAt,
     string RefreshToken,
     DateTimeOffset RefreshTokenExpiresAt,
-    string LicenseToken,
-    DateTimeOffset LicenseTokenExpiresAt,
+    string OfflineToken,
+    DateTimeOffset OfflineTokenExpiresAt,
     UserInfo User,
-    LicenseInfo License);
+    ProductAccessInfo Access);
 
 public sealed record HeartbeatResponse(
-    string LicenseToken,
-    DateTimeOffset LicenseTokenExpiresAt,
-    LicenseInfo License);
+    string OfflineToken,
+    DateTimeOffset OfflineTokenExpiresAt,
+    ProductAccessInfo Access);
+
+/// <summary>Sistema de la suite al que el usuario puede entrar (para un selector de sistemas).</summary>
+public sealed record AvailableProduct(string Code, string Name, string? Role, IReadOnlyList<string> Features);
 
 public sealed record UserInfo(Guid Id, string Email, string FullName, string Role, Guid? OrganizationId);

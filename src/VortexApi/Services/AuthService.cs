@@ -17,8 +17,8 @@ public sealed class LockoutOptions
 }
 
 /// <summary>
-/// Inicio de sesión de las apps Vortex y de la consola de administración. Cada inicio de sesión y cada
-/// renovación vuelve a validar usuario, organización, licencia, puesto y equipo.
+/// Inicio de sesión de los sistemas Vortex y de la consola de administración. Cada inicio de sesión y cada
+/// renovación vuelve a validar usuario, organización, sistema habilitado, acceso del usuario y equipo.
 /// </summary>
 public sealed class AuthService(
     VortexDbContext db,
@@ -38,7 +38,7 @@ public sealed class AuthService(
 
     private string? ClientIp => http.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
-    // ---------- Apps Vortex ----------
+    // ---------- Sistemas Vortex ----------
 
     public async Task<ProductSessionResponse> ProductLoginAsync(string? productCode, string? productKey, ProductLoginRequest req)
     {
@@ -51,37 +51,25 @@ public sealed class AuthService(
             var now = clock.GetUtcNow();
 
             if (user.OrganizationId is null)
-                throw Forbidden(ErrorCodes.NoLicense, "Los administradores de plataforma no consumen licencias de producto.");
+                throw Forbidden(ErrorCodes.ProductNotEnabled, "Los administradores de plataforma no inician sesión en los sistemas.");
 
-            var licenses = await db.Licenses
-                .Include(l => l.Product)
-                .Include(l => l.Organization)
-                .Where(l => l.OrganizationId == user.OrganizationId && l.ProductId == product.Id)
-                .ToListAsync();
-            if (licenses.Count == 0)
-                throw Forbidden(ErrorCodes.NoLicense, $"La organización no tiene licencia de {product.Name}.");
+            var access = await db.OrganizationProducts
+                .Include(p => p.Product)
+                .Include(p => p.Organization)
+                .SingleOrDefaultAsync(p => p.OrganizationId == user.OrganizationId && p.ProductId == product.Id)
+                ?? throw Forbidden(ErrorCodes.ProductNotEnabled, $"{product.Name} no está habilitado para la organización.");
+            AccessRules.EnsureUsable(access, now);
 
-            var licenseIds = licenses.Select(l => l.Id).ToList();
-            var seats = await db.LicenseSeats
-                .Include(s => s.Devices)
-                .Where(s => s.UserId == user.Id && licenseIds.Contains(s.LicenseId))
-                .ToListAsync();
-            if (seats.Count == 0)
-                throw Forbidden(ErrorCodes.NoSeat, $"El usuario no tiene un puesto asignado en {product.Name}.");
+            var member = await db.ProductMembers
+                .Include(m => m.Devices)
+                .SingleOrDefaultAsync(m => m.OrganizationProductId == access.Id && m.UserId == user.Id)
+                ?? await AutoAssignAsync(access, user, now);
 
-            var ordered = seats.OrderByDescending(s => s.License.ExpiresAt).ToList();
-            var seat = ordered.FirstOrDefault(s => s.License.IsValidAt(now));
-            if (seat is null)
-            {
-                LicenseRules.EnsureValid(ordered[0].License, now);
-                throw Forbidden(ErrorCodes.NoLicense, "No hay una licencia vigente.");
-            }
-
-            var device = ActivateDevice(seat, req, now);
+            var device = ActivateDevice(member, req, now);
             user.LastLoginAt = now;
 
-            var session = IssueProductSession(user, seat.License, device, Guid.NewGuid(), now, out _);
-            audit.Record(AuditActions.ProductLogin, true, user.Id, user.OrganizationId, product.Code, seat.LicenseId.ToString());
+            var session = IssueProductSession(user, member, device, Guid.NewGuid(), now, out _);
+            audit.Record(AuditActions.ProductLogin, true, user.Id, user.OrganizationId, product.Code, access.Id.ToString());
             await db.SaveChangesAsync();
             return session;
         }
@@ -101,20 +89,16 @@ public sealed class AuthService(
         {
             if (old.ProductId is null)
                 throw InvalidRefresh();
-            if (old.DeviceActivationId is null)
+            if (old.DeviceId is null)
                 throw Forbidden(ErrorCodes.DeviceRevoked, "El equipo ya no está activado.");
 
-            var device = await db.DeviceActivations
-                .Include(d => d.Seat).ThenInclude(s => s.License).ThenInclude(l => l.Product)
-                .Include(d => d.Seat).ThenInclude(s => s.License).ThenInclude(l => l.Organization)
-                .SingleAsync(d => d.Id == old.DeviceActivationId);
-
+            var device = await LoadDeviceAsync(old.DeviceId.Value);
             EnsureDeviceMatches(device, req.DeviceId);
-            LicenseRules.EnsureValid(device.Seat.License, now);
+            AccessRules.EnsureUsable(device.Member.OrganizationProduct, now);
 
             device.LastSeenAt = now;
             device.LastIp = ClientIp;
-            var session = IssueProductSession(old.User, device.Seat.License, device, old.FamilyId, now, out var next);
+            var session = IssueProductSession(old.User, device.Member, device, old.FamilyId, now, out var next);
             old.ReplacedById = next.Id;
             await db.SaveChangesAsync();
             return session;
@@ -126,26 +110,27 @@ public sealed class AuthService(
         }
     }
 
-    public async Task<HeartbeatResponse> HeartbeatAsync(Guid userId, Guid deviceActivationId)
+    public async Task<HeartbeatResponse> HeartbeatAsync(Guid userId, Guid deviceId)
     {
         var now = clock.GetUtcNow();
-        var device = await db.DeviceActivations
-            .Include(d => d.Seat).ThenInclude(s => s.User).ThenInclude(u => u.Organization)
-            .Include(d => d.Seat).ThenInclude(s => s.License).ThenInclude(l => l.Product)
-            .Include(d => d.Seat).ThenInclude(s => s.License).ThenInclude(l => l.Organization)
-            .SingleOrDefaultAsync(d => d.Id == deviceActivationId && d.Seat.UserId == userId);
+        var device = await db.Devices
+            .Include(d => d.Member).ThenInclude(m => m.User).ThenInclude(u => u.Organization)
+            .Include(d => d.Member).ThenInclude(m => m.OrganizationProduct).ThenInclude(p => p.Product)
+            .Include(d => d.Member).ThenInclude(m => m.OrganizationProduct).ThenInclude(p => p.Organization)
+            .SingleOrDefaultAsync(d => d.Id == deviceId && d.Member.UserId == userId);
         try
         {
             if (device is null || device.RevokedAt is not null)
                 throw Forbidden(ErrorCodes.DeviceRevoked, "El equipo ya no está activado.");
 
-            LicenseRules.EnsureUserCanSignIn(device.Seat.User, now);
-            LicenseRules.EnsureValid(device.Seat.License, now);
+            AccessRules.EnsureUserCanSignIn(device.Member.User, now);
+            AccessRules.EnsureUsable(device.Member.OrganizationProduct, now);
         }
         catch (ApiException ex)
         {
-            await audit.RecordNowAsync(AuditActions.Heartbeat, false, userId, device?.Seat.License.OrganizationId,
-                device?.Seat.License.Product.Code, deviceActivationId.ToString(), ex.Code);
+            var access = device?.Member.OrganizationProduct;
+            await audit.RecordNowAsync(AuditActions.Heartbeat, false, userId, access?.OrganizationId,
+                access?.Product.Code, deviceId.ToString(), ex.Code);
             throw;
         }
 
@@ -153,9 +138,29 @@ public sealed class AuthService(
         device.LastIp = ClientIp;
         await db.SaveChangesAsync();
 
-        var license = device.Seat.License;
-        var licenseToken = tokens.CreateLicenseToken(device.Seat.User, license, device);
-        return new HeartbeatResponse(licenseToken.Token, licenseToken.ExpiresAt, ToLicenseInfo(license, device));
+        var offline = tokens.CreateOfflineToken(device.Member.User, device.Member, device);
+        return new HeartbeatResponse(offline.Token, offline.ExpiresAt, ToAccessInfo(device.Member, device));
+    }
+
+    /// <summary>Sistemas de la suite a los que el usuario puede entrar ahora (para un selector de sistemas).</summary>
+    public async Task<IReadOnlyList<AvailableProduct>> GetAvailableProductsAsync(Guid userId)
+    {
+        var now = clock.GetUtcNow();
+        var user = await db.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        if (user.OrganizationId is null)
+            return [];
+
+        var accesses = await db.OrganizationProducts.AsNoTracking()
+            .Include(p => p.Product)
+            .Include(p => p.Members.Where(m => m.UserId == userId))
+            .Where(p => p.OrganizationId == user.OrganizationId && p.IsEnabled && p.Product.IsActive)
+            .ToListAsync();
+
+        return accesses
+            .Where(p => p.IsUsableAt(now) && (p.Members.Count > 0 || p.AutoAssignUsers))
+            .OrderBy(p => p.Product.Code)
+            .Select(p => new AvailableProduct(p.Product.Code, p.Product.Name, p.Members.FirstOrDefault()?.Role, p.Features))
+            .ToList();
     }
 
     // ---------- Consola de administración ----------
@@ -241,11 +246,11 @@ public sealed class AuthService(
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
     }
 
-    public async Task RevokeDeviceSessionsAsync(Guid deviceActivationId)
+    public async Task RevokeDeviceSessionsAsync(Guid deviceId)
     {
         var now = clock.GetUtcNow();
         await db.RefreshTokens
-            .Where(t => t.DeviceActivationId == deviceActivationId && t.RevokedAt == null)
+            .Where(t => t.DeviceId == deviceId && t.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
     }
 
@@ -261,7 +266,7 @@ public sealed class AuthService(
             !Hashing.FixedTimeEqualsHex(Hashing.Sha256(productKey), product.ClientKeyHash))
         {
             throw new ApiException(StatusCodes.Status401Unauthorized, ErrorCodes.InvalidProduct,
-                "Aplicación no reconocida. Verifique los encabezados X-Vortex-Product y X-Vortex-Product-Key.");
+                "Sistema no reconocido. Verifique los encabezados X-Vortex-Product y X-Vortex-Product-Key.");
         }
         return product;
     }
@@ -279,7 +284,7 @@ public sealed class AuthService(
         }
 
         if (user.LockoutEnd > now)
-            LicenseRules.EnsureUserCanSignIn(user, now);
+            AccessRules.EnsureUserCanSignIn(user, now);
 
         if (!hasher.Verify(password, user.PasswordHash))
         {
@@ -293,29 +298,45 @@ public sealed class AuthService(
             throw InvalidCredentials();
         }
 
-        LicenseRules.EnsureUserCanSignIn(user, now);
+        AccessRules.EnsureUserCanSignIn(user, now);
         user.FailedLoginCount = 0;
         user.LockoutEnd = null;
         return user;
     }
 
-    private DeviceActivation ActivateDevice(LicenseSeat seat, ProductLoginRequest req, DateTimeOffset now)
+    /// <summary>Da acceso al usuario si el sistema está configurado para asignar a todos los usuarios de la organización.</summary>
+    private async Task<ProductMember> AutoAssignAsync(OrganizationProduct access, User user, DateTimeOffset now)
     {
+        if (!access.AutoAssignUsers)
+            throw Forbidden(ErrorCodes.NoAccess, $"El usuario no tiene acceso a {access.Product.Name}.");
+
+        if (access.MaxUsers is { } max && await db.ProductMembers.CountAsync(m => m.OrganizationProductId == access.Id) >= max)
+            throw Forbidden(ErrorCodes.UserLimitReached, $"{access.Product.Name} alcanzó su máximo de {max} usuario(s).");
+
+        var member = new ProductMember { OrganizationProduct = access, UserId = user.Id, AddedAt = now };
+        db.ProductMembers.Add(member);
+        audit.Record(AuditActions.MemberAdded, true, user.Id, access.OrganizationId, access.Product.Code,
+            member.Id.ToString(), "asignación automática");
+        return member;
+    }
+
+    private Device ActivateDevice(ProductMember member, ProductLoginRequest req, DateTimeOffset now)
+    {
+        var access = member.OrganizationProduct;
         var hash = Hashing.Sha256(req.DeviceId);
-        var active = seat.Devices.Where(d => d.RevokedAt is null).ToList();
+        var active = member.Devices.Where(d => d.RevokedAt is null).ToList();
         var device = active.FirstOrDefault(d => d.DeviceHash == hash);
 
         if (device is null)
         {
-            if (active.Count >= seat.License.MaxDevicesPerUser)
+            if (access.MaxDevicesPerUser is { } max && active.Count >= max)
                 throw Forbidden(ErrorCodes.DeviceLimitReached,
-                    $"Se alcanzó el máximo de {seat.License.MaxDevicesPerUser} equipo(s) por usuario. " +
-                    "Un administrador debe liberar un equipo.");
+                    $"Se alcanzó el máximo de {max} equipo(s) por usuario. Un administrador debe liberar un equipo.");
 
-            device = new DeviceActivation { DeviceHash = hash, ActivatedAt = now };
-            seat.Devices.Add(device);
-            audit.Record(AuditActions.DeviceActivated, true, seat.UserId, seat.License.OrganizationId,
-                seat.License.Product.Code, device.Id.ToString(), req.DeviceName);
+            device = new Device { DeviceHash = hash, ActivatedAt = now };
+            member.Devices.Add(device);
+            audit.Record(AuditActions.DeviceActivated, true, member.UserId, access.OrganizationId,
+                access.Product.Code, device.Id.ToString(), req.DeviceName);
         }
 
         device.DeviceName = req.DeviceName ?? device.DeviceName;
@@ -325,7 +346,12 @@ public sealed class AuthService(
         return device;
     }
 
-    private static void EnsureDeviceMatches(DeviceActivation device, string? deviceId)
+    private Task<Device> LoadDeviceAsync(Guid deviceId) => db.Devices
+        .Include(d => d.Member).ThenInclude(m => m.OrganizationProduct).ThenInclude(p => p.Product)
+        .Include(d => d.Member).ThenInclude(m => m.OrganizationProduct).ThenInclude(p => p.Organization)
+        .SingleAsync(d => d.Id == deviceId);
+
+    private static void EnsureDeviceMatches(Device device, string? deviceId)
     {
         if (device.RevokedAt is not null)
             throw Forbidden(ErrorCodes.DeviceRevoked, "El equipo ya no está activado.");
@@ -364,7 +390,7 @@ public sealed class AuthService(
         token.RevokedAt = now;
         try
         {
-            LicenseRules.EnsureUserCanSignIn(token.User, now);
+            AccessRules.EnsureUserCanSignIn(token.User, now);
         }
         catch (ApiException ex)
         {
@@ -382,26 +408,26 @@ public sealed class AuthService(
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now));
     }
 
-    private ProductSessionResponse IssueProductSession(User user, License license, DeviceActivation device,
+    private ProductSessionResponse IssueProductSession(User user, ProductMember member, Device device,
         Guid familyId, DateTimeOffset now, out RefreshToken refresh)
     {
-        var access = tokens.CreateProductAccessToken(user, license, device);
-        var licenseToken = tokens.CreateLicenseToken(user, license, device);
+        var access = tokens.CreateProductAccessToken(user, member, device);
+        var offline = tokens.CreateOfflineToken(user, member, device);
         var plain = Hashing.RandomToken();
         refresh = new RefreshToken
         {
             TokenHash = Hashing.Sha256(plain),
             FamilyId = familyId,
             UserId = user.Id,
-            DeviceActivation = device,
-            ProductId = license.ProductId,
+            Device = device,
+            ProductId = member.OrganizationProduct.ProductId,
             CreatedAt = now,
             ExpiresAt = now.AddDays(_jwt.ProductRefreshTokenDays),
         };
         db.RefreshTokens.Add(refresh);
 
         return new ProductSessionResponse(access.Token, access.ExpiresAt, plain, refresh.ExpiresAt,
-            licenseToken.Token, licenseToken.ExpiresAt, ToUserInfo(user), ToLicenseInfo(license, device));
+            offline.Token, offline.ExpiresAt, ToUserInfo(user), ToAccessInfo(member, device));
     }
 
     private AdminSessionResponse IssueAdminSession(User user, Guid familyId, DateTimeOffset now, out RefreshToken refresh)
@@ -422,8 +448,11 @@ public sealed class AuthService(
 
     public static UserInfo ToUserInfo(User u) => new(u.Id, u.Email, u.FullName, u.Role.ToString(), u.OrganizationId);
 
-    public static LicenseInfo ToLicenseInfo(License l, DeviceActivation d) => new(
-        l.Id, l.LicenseKey, l.Product.Code, l.Plan, l.OrganizationId, l.Organization.Name, l.Features, l.ExpiresAt, d.Id);
+    private static ProductAccessInfo ToAccessInfo(ProductMember m, Device d)
+    {
+        var p = m.OrganizationProduct;
+        return new(p.Id, p.Product.Code, p.OrganizationId, p.Organization.Name, m.Role, p.Features, p.ExpiresAt, d.Id);
+    }
 
     private static ApiException Forbidden(string code, string message) => new(StatusCodes.Status403Forbidden, code, message);
 

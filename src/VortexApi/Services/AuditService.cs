@@ -32,27 +32,3 @@ public sealed class AuditService(VortexDbContext db, TimeProvider clock, IHttpCo
     }
 }
 
-public static class AuditActions
-{
-    public const string ProductLogin = "product.login";
-    public const string AdminLogin = "admin.login";
-    public const string Refresh = "session.refresh";
-    public const string RefreshReuse = "session.refresh_reuse";
-    public const string Logout = "session.logout";
-    public const string Heartbeat = "license.heartbeat";
-    public const string DeviceActivated = "device.activated";
-    public const string DeviceRevoked = "device.revoked";
-    public const string PasswordChanged = "user.password_changed";
-    public const string UserCreated = "user.created";
-    public const string UserUpdated = "user.updated";
-    public const string UserPasswordReset = "user.password_reset";
-    public const string UserUnlocked = "user.unlocked";
-    public const string OrganizationCreated = "organization.created";
-    public const string OrganizationUpdated = "organization.updated";
-    public const string LicenseCreated = "license.created";
-    public const string LicenseUpdated = "license.updated";
-    public const string LicenseStatusChanged = "license.status_changed";
-    public const string SeatAssigned = "seat.assigned";
-    public const string SeatRemoved = "seat.removed";
-    public const string ProductKeyRotated = "product.key_rotated";
-}

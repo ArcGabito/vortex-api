@@ -5,7 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 namespace VortexApi.Security;
 
 /// <summary>
-/// Llave RSA con la que se firman access tokens y license tokens (RS256). La parte pública se publica en
+/// Llave RSA con la que se firman access tokens y offline tokens (RS256). La parte pública se publica en
 /// <c>/.well-known/jwks.json</c> para que los sistemas Vortex validen tokens sin compartir secretos.
 /// </summary>
 public sealed class SigningKeyProvider

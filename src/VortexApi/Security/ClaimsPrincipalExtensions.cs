@@ -12,7 +12,7 @@ public static class ClaimsPrincipalExtensions
 
     public static bool IsPlatformAdmin(this ClaimsPrincipal p) => p.IsInRole(nameof(UserRole.PlatformAdmin));
 
-    public static Guid? DeviceActivationId(this ClaimsPrincipal p) =>
+    public static Guid? DeviceId(this ClaimsPrincipal p) =>
         Guid.TryParse(p.FindFirstValue(VortexClaims.Device), out var id) ? id : null;
 
     /// <summary>

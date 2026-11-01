@@ -7,13 +7,6 @@ public enum UserRole
     PlatformAdmin = 2,
 }
 
-public enum LicenseStatus
-{
-    Active = 0,
-    Suspended = 1,
-    Revoked = 2,
-}
-
 public static class ProductCodes
 {
     public const string Erp = "ERP";

@@ -1,37 +1,35 @@
 @api = http://localhost:5299
 @productKey = vxp_erp_dev_key_change_me
+@deviceId = 3f0c2a8e-6a1b-4c1e-9d55-0f2b7d8e9a10
 
-### 1. Login de administración (PlatformAdmin sembrado en Development)
+### 1. Login de administración (PlatformAdmin creado en Development)
 # @name admin
 POST {{api}}/api/admin/auth/login
 Content-Type: application/json
 
 { "email": "admin@vortex.local", "password": "Vortex-Admin-2026!" }
 
-### 2. Crear organización (cliente)
+### 2. Crear organización
 # @name org
 POST {{api}}/api/admin/organizations
 Authorization: Bearer {{admin.response.body.accessToken}}
 Content-Type: application/json
 
-{ "name": "Acme SA", "taxId": "J-12345678-9", "contactEmail": "ti@acme.com" }
+{ "name": "Acme SA", "taxId": "20123456789", "contactEmail": "ti@acme.com" }
 
-### 3. Crear licencia de Vortex ERP para la organización
-# @name license
-POST {{api}}/api/admin/licenses
+### 3. Habilitar Vortex ERP (sin límites ni vencimiento; todos los campos son opcionales)
+PUT {{api}}/api/admin/organizations/{{org.response.body.id}}/products/ERP
 Authorization: Bearer {{admin.response.body.accessToken}}
 Content-Type: application/json
 
-{
-  "organizationId": "{{org.response.body.id}}",
-  "productCode": "ERP",
-  "plan": "business",
-  "maxSeats": 10,
-  "maxDevicesPerUser": 2,
-  "offlineGraceDays": 3,
-  "expiresAt": "2027-12-31T23:59:59Z",
-  "features": ["contabilidad", "nomina", "ia"]
-}
+{ "features": ["contabilidad", "nomina"] }
+
+### 3b. Habilitar también Vortex CRM, dando acceso automático a todos los usuarios
+PUT {{api}}/api/admin/organizations/{{org.response.body.id}}/products/CRM
+Authorization: Bearer {{admin.response.body.accessToken}}
+Content-Type: application/json
+
+{ "autoAssignUsers": true }
 
 ### 4. Crear usuario
 # @name user
@@ -47,14 +45,14 @@ Content-Type: application/json
   "role": "User"
 }
 
-### 5. Asignar puesto de la licencia al usuario
-POST {{api}}/api/admin/licenses/{{license.response.body.license.id}}/seats
+### 5. Dar acceso al ERP con un rol
+PUT {{api}}/api/admin/organizations/{{org.response.body.id}}/products/ERP/members/{{user.response.body.id}}
 Authorization: Bearer {{admin.response.body.accessToken}}
 Content-Type: application/json
 
-{ "userId": "{{user.response.body.id}}" }
+{ "role": "contador" }
 
-### 6. Login desde la app Vortex ERP
+### 6. Login desde Vortex ERP
 # @name session
 POST {{api}}/api/auth/login
 X-Vortex-Product: ERP
@@ -64,20 +62,24 @@ Content-Type: application/json
 {
   "email": "ana@acme.com",
   "password": "Clave-Segura-2026!",
-  "deviceId": "3f0c2a8e-6a1b-4c1e-9d55-0f2b7d8e9a10",
+  "deviceId": "{{deviceId}}",
   "deviceName": "Laptop Ana",
   "platform": "windows"
 }
 
-### 7. Heartbeat (verificación periódica)
-POST {{api}}/api/licensing/heartbeat
+### 7. Sistemas a los que Ana puede entrar (ERP y CRM)
+GET {{api}}/api/access/products
 Authorization: Bearer {{session.response.body.accessToken}}
 
-### 8. Renovar sesión
+### 8. Heartbeat (verificación periódica)
+POST {{api}}/api/access/heartbeat
+Authorization: Bearer {{session.response.body.accessToken}}
+
+### 9. Renovar sesión
 POST {{api}}/api/auth/refresh
 Content-Type: application/json
 
-{ "refreshToken": "{{session.response.body.refreshToken}}", "deviceId": "3f0c2a8e-6a1b-4c1e-9d55-0f2b7d8e9a10" }
+{ "refreshToken": "{{session.response.body.refreshToken}}", "deviceId": "{{deviceId}}" }
 
-### 9. Llaves públicas
+### 10. Llaves públicas
 GET {{api}}/.well-known/jwks.json

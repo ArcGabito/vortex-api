@@ -8,7 +8,7 @@ namespace VortexApi.Controllers;
 /// <summary>
 /// Llaves públicas para validar los tokens. Los backends de los sistemas Vortex pueden configurar
 /// JwtBearer con <c>Authority</c> apuntando a esta API; las apps MAUI usan el JWKS para validar el
-/// license token sin conexión.
+/// offline token sin conexión.
 /// </summary>
 [ApiController]
 [AllowAnonymous]
