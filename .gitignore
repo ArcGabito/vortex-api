@@ -1,0 +1,9 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+TestResults/
+# Llaves de firma generadas en desarrollo: nunca se versionan.
+**/keys/
+appsettings.Production.json

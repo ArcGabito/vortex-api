@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VortexApi/VortexApi.csproj" />
+    <Project Path="src/VortexApi.Client/VortexApi.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VortexApi.Tests/VortexApi.Tests.csproj" />
+  </Folder>
+</Solution>

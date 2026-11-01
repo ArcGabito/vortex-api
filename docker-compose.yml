@@ -1,0 +1,14 @@
+# Entorno local: SQL Server para desarrollo. La API se ejecuta con `dotnet run` (ver README).
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Vortex_Dev_2026!"
+    ports:
+      - "1433:1433"
+    volumes:
+      - vortex-sql:/var/opt/mssql
+
+volumes:
+  vortex-sql:

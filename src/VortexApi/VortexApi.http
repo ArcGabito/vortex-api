@@ -1,0 +1,83 @@
+@api = http://localhost:5299
+@productKey = vxp_erp_dev_key_change_me
+
+### 1. Login de administración (PlatformAdmin sembrado en Development)
+# @name admin
+POST {{api}}/api/admin/auth/login
+Content-Type: application/json
+
+{ "email": "admin@vortex.local", "password": "Vortex-Admin-2026!" }
+
+### 2. Crear organización (cliente)
+# @name org
+POST {{api}}/api/admin/organizations
+Authorization: Bearer {{admin.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "Acme SA", "taxId": "J-12345678-9", "contactEmail": "ti@acme.com" }
+
+### 3. Crear licencia de Vortex ERP para la organización
+# @name license
+POST {{api}}/api/admin/licenses
+Authorization: Bearer {{admin.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "organizationId": "{{org.response.body.id}}",
+  "productCode": "ERP",
+  "plan": "business",
+  "maxSeats": 10,
+  "maxDevicesPerUser": 2,
+  "offlineGraceDays": 3,
+  "expiresAt": "2027-12-31T23:59:59Z",
+  "features": ["contabilidad", "nomina", "ia"]
+}
+
+### 4. Crear usuario
+# @name user
+POST {{api}}/api/admin/users
+Authorization: Bearer {{admin.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "organizationId": "{{org.response.body.id}}",
+  "email": "ana@acme.com",
+  "fullName": "Ana Pérez",
+  "password": "Clave-Segura-2026!",
+  "role": "User"
+}
+
+### 5. Asignar puesto de la licencia al usuario
+POST {{api}}/api/admin/licenses/{{license.response.body.license.id}}/seats
+Authorization: Bearer {{admin.response.body.accessToken}}
+Content-Type: application/json
+
+{ "userId": "{{user.response.body.id}}" }
+
+### 6. Login desde la app Vortex ERP
+# @name session
+POST {{api}}/api/auth/login
+X-Vortex-Product: ERP
+X-Vortex-Product-Key: {{productKey}}
+Content-Type: application/json
+
+{
+  "email": "ana@acme.com",
+  "password": "Clave-Segura-2026!",
+  "deviceId": "3f0c2a8e-6a1b-4c1e-9d55-0f2b7d8e9a10",
+  "deviceName": "Laptop Ana",
+  "platform": "windows"
+}
+
+### 7. Heartbeat (verificación periódica)
+POST {{api}}/api/licensing/heartbeat
+Authorization: Bearer {{session.response.body.accessToken}}
+
+### 8. Renovar sesión
+POST {{api}}/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "{{session.response.body.refreshToken}}", "deviceId": "3f0c2a8e-6a1b-4c1e-9d55-0f2b7d8e9a10" }
+
+### 9. Llaves públicas
+GET {{api}}/.well-known/jwks.json
