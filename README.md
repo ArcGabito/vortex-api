@@ -439,11 +439,11 @@ docker build -t vortex-api .
 Despliegue (ejemplo con Azure CLI y Azure Container Registry):
 
 ```bash
-az acr build --registry <acr> --image vortex-api:0.2.0 .
+az acr build --registry <acr> --image vortex-api:0.3.0 .
 
 az containerapp create \
   --name vortex-api --resource-group <rg> --environment <env> \
-  --image <acr>.azurecr.io/vortex-api:0.2.0 --registry-server <acr>.azurecr.io \
+  --image <acr>.azurecr.io/vortex-api:0.3.0 --registry-server <acr>.azurecr.io \
   --ingress external --target-port 8080 \
   --min-replicas 1 \
   --secrets sql-conn="<cadena Azure SQL>" jwt-key="<PEM RSA privado>" \
