@@ -81,7 +81,9 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHsts();
-    app.UseHttpsRedirection();
+    // Detrás de un proxy (Azure Container Apps) el TLS lo termina el ingress; ahí se fuerza HTTPS.
+    if (!config.GetValue<bool>("ForwardedHeaders:Enabled"))
+        app.UseHttpsRedirection();
 }
 
 app.UseRateLimiter();

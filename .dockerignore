@@ -1,0 +1,35 @@
+# Artefactos de compilación
+**/bin/
+**/obj/
+**/out/
+**/publish/
+**/TestResults/
+*.user
+*.suo
+
+# El contenedor solo necesita src/; pruebas y tooling no entran en la imagen
+tests/
+.github/
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Control de versiones y editores
+.git/
+.gitignore
+.vs/
+.vscode/
+.idea/
+
+# Secretos y configuración local: nunca dentro de la imagen
+**/keys/
+**/*.pem
+**/*.pfx
+**/appsettings.Development.json
+**/appsettings.*.local.json
+**/secrets.json
+.env
+**/.env
+
+# Documentación
+*.md

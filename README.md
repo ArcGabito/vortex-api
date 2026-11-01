@@ -146,7 +146,38 @@ En ese caso la revocación surte efecto al vencer el access token (máx. 15 min)
 - `Jwt:Issuer` → URL pública de la API (debe coincidir con la que validan los clientes).
 - `Seed:AdminEmail` / `Seed:AdminPassword` sólo para el primer arranque; luego eliminarlos.
 - Generar las claves de app con `POST /api/admin/products/{code}/rotate-key`.
-- `ForwardedHeaders:Enabled=true` detrás de App Service / Front Door para registrar la IP real.
+- `ForwardedHeaders:Enabled=true` detrás de App Service / Front Door para registrar la IP real
+  (la imagen Docker ya lo trae activado).
+
+### Docker / Azure Container Apps
+
+La imagen usa `aspnet:10.0-noble-chiseled-extra` (sin shell, usuario no root), escucha en el puerto **8080**,
+arranca en `Production` y aplica las migraciones al iniciar.
+
+```bash
+docker build -t vortex-api .
+```
+
+Despliegue (ejemplo con Azure CLI y Azure Container Registry):
+
+```bash
+az acr build --registry <acr> --image vortex-api:0.1.0 .
+
+az containerapp create \
+  --name vortex-api --resource-group <rg> --environment <env> \
+  --image <acr>.azurecr.io/vortex-api:0.1.0 --registry-server <acr>.azurecr.io \
+  --ingress external --target-port 8080 \
+  --min-replicas 1 \
+  --secrets sql-conn="<cadena Azure SQL>" jwt-key="<PEM RSA privado>" \
+  --env-vars ConnectionStrings__Vortex=secretref:sql-conn \
+             Jwt__SigningKeyPem=secretref:jwt-key \
+             Jwt__Issuer=https://<dominio-publico>
+```
+
+- Las variables usan `__` en lugar de `:` (`Jwt__Issuer`, `Seed__AdminEmail`, …).
+- Configure sondas *liveness/readiness* HTTP en `/health`.
+- En producción es preferible guardar los secretos en Key Vault y referenciarlos con una identidad administrada.
+- Todas las réplicas deben compartir la misma `Jwt__SigningKeyPem`.
 
 ## Limitaciones conocidas
 
