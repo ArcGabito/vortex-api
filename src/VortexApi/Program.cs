@@ -26,6 +26,7 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<MasterDataWriter>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();

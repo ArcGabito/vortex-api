@@ -22,6 +22,9 @@ public class Organization
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>Último número de secuencia asignado en el feed de cambios de datos maestros.</summary>
+    public long ChangeSequence { get; set; }
+
     public List<User> Users { get; set; } = [];
     public List<OrganizationProduct> Products { get; set; } = [];
 }

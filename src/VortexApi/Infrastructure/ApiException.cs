@@ -37,4 +37,11 @@ public static class ErrorCodes
     public const string EmailInUse = "email_in_use";
     public const string LimitInUse = "limit_in_use";
     public const string WeakPassword = "weak_password";
+
+    public const string VersionConflict = "version_conflict";
+    public const string DuplicateValue = "duplicate_value";
+    public const string DuplicateDocument = "duplicate_document";
+    public const string DuplicateSku = "duplicate_sku";
+    public const string DuplicateCode = "duplicate_code";
+    public const string InvalidDocument = "invalid_document";
 }

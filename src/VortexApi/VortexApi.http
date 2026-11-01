@@ -83,3 +83,53 @@ Content-Type: application/json
 
 ### 10. Llaves públicas
 GET {{api}}/.well-known/jwks.json
+
+### ---------- Fase 2: datos maestros ----------
+
+### 11. Cliente creado desde el sistema con Id propio (sirve para sincronizar sin conexión)
+PUT {{api}}/api/master/parties/0b6c1f7e-2d3a-4c55-9a11-6f0e8b2d4c01
+Authorization: Bearer {{session.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Bodega Don Pepe",
+  "documentType": "RUC",
+  "documentNumber": "20123456789",
+  "email": "compras@donpepe.pe",
+  "address": { "line": "Av. Perú 123", "district": "Breña", "city": "Lima", "countryCode": "PE" }
+}
+
+### 12. Buscar cliente por documento antes de crearlo
+GET {{api}}/api/master/parties?documentNumber=20123456789
+Authorization: Bearer {{session.response.body.accessToken}}
+
+### 13. Artículo
+# @name item
+POST {{api}}/api/master/items
+Authorization: Bearer {{session.response.body.accessToken}}
+Content-Type: application/json
+
+{ "sku": "CAFE-250", "name": "Café tostado 250 g", "price": 18.50, "taxCode": "igv", "barcode": "7750000000017" }
+
+### 14. Actualizar el artículo solo si nadie lo cambió (If-Match con la versión)
+PUT {{api}}/api/master/items/{{item.response.body.id}}
+Authorization: Bearer {{session.response.body.accessToken}}
+If-Match: "1"
+Content-Type: application/json
+
+{ "sku": "CAFE-250", "name": "Café tostado 250 g", "price": 19.90, "taxCode": "igv", "barcode": "7750000000017" }
+
+### 15. Sede / almacén
+POST {{api}}/api/master/sites
+Authorization: Bearer {{session.response.body.accessToken}}
+Content-Type: application/json
+
+{ "code": "ALM-01", "name": "Almacén central", "kind": "Warehouse", "address": { "city": "Lima", "countryCode": "PE" } }
+
+### 16. Datos de la empresa (lectura: sistemas; escritura: OrgAdmin)
+GET {{api}}/api/master/company
+Authorization: Bearer {{session.response.body.accessToken}}
+
+### 17. Feed de cambios desde el inicio
+GET {{api}}/api/master/changes?since=0&limit=200
+Authorization: Bearer {{session.response.body.accessToken}}

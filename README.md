@@ -7,7 +7,7 @@ este hub permite usarlos juntos o reemplazar uno por otro sin perder usuarios ni
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1. Identidad y accesos | Un usuario para los 4 sistemas, sistemas habilitados por organización, roles por sistema, equipos, modo sin conexión | ✅ |
-| 2. Datos maestros | Clientes, productos/artículos, sedes/almacenes, datos de la empresa, con historial de cambios | Pendiente |
+| 2. Datos maestros | Clientes/proveedores, artículos, sedes/almacenes y datos de la empresa, con feed de cambios | ✅ |
 | 3. Eventos de integración | Publicar y consumir eventos entre sistemas (`sale.completed`, `stock.adjusted`, …) y webhooks | Pendiente |
 | 4. Sincronización en el SDK | Módulo de sincronización para las apps MAUI | Pendiente |
 
@@ -41,6 +41,54 @@ este hub permite usarlos juntos o reemplazar uno por otro sin perder usuarios ni
   `GET /api/access/products` devuelve los sistemas disponibles, para mostrar un selector.
 - **Reemplazar CRM por ERP**: se habilita ERP y se deshabilita CRM (`isEnabled: false`). Usuarios, miembros
   y roles se conservan. Si se vuelve a habilitar CRM, todo queda como estaba.
+
+## Datos maestros
+
+Son los datos que más de un sistema necesita. Viven en el hub con un Id único, separados por organización,
+y cada sistema los referencia por ese Id. Así, si una empresa cambia de CRM a ERP, sus clientes ya están ahí.
+
+| Tipo | Ruta | Lo usan | Únicos por organización |
+|---|---|---|---|
+| `party`: clientes, proveedores, contactos | `/api/master/parties` | CRM, ERP, POS | tipo + número de documento (RUC 11 dígitos, DNI 8) |
+| `item`: productos y servicios | `/api/master/items` | ERP, WMS, POS | SKU |
+| `site`: sedes, tiendas, almacenes | `/api/master/sites` | ERP, WMS, POS | código |
+| `company`: razón social, RUC, moneda, impuesto, zona horaria | `/api/master/company` | todos | uno por organización |
+
+Lo que **no** vive aquí: stock, ventas, facturas, oportunidades. Son datos de cada sistema y se compartirán
+con eventos (fase 3).
+
+### Reglas de escritura
+
+- **`PUT /{id}` crea o actualiza con un Id generado por el sistema.** Un POS sin conexión puede crear un cliente
+  con un GUID propio y sincronizarlo después; reintentar no lo duplica. `POST` también existe, con Id generado
+  por el hub.
+- **Versiones**: cada registro tiene `meta.version` y la respuesta incluye `ETag: "versión"`. Enviando
+  `If-Match: "versión"`, el hub rechaza con **412 `version_conflict`** si otro sistema lo cambió antes.
+- **Guardar sin cambios no genera versión ni cambio**, así dos sistemas que sincronizan no entran en bucle.
+- **Borrado lógico**: `DELETE` lo oculta de los listados, pero sigue disponible por Id para quien lo referencie.
+  Un `PUT` sobre un registro borrado lo restaura.
+- **Antes de crear un cliente**, busque con `GET /api/master/parties?documentNumber=…`: si otro sistema ya lo
+  registró, el hub responde 409 `duplicate_document` con el Id existente.
+- Escriben los sistemas (cualquier usuario con acceso) y el OrgAdmin. Los datos de la empresa solo los cambia el OrgAdmin.
+
+### Feed de cambios: cómo se sincroniza un sistema
+
+```
+GET /api/master/changes?since=<cursor>&types=party,item&limit=200
+→ { "changes": [ { "sequence": 41, "entityType": "item", "entityId": "…", "operation": "Updated",
+                   "version": 3, "source": "ERP", "changedAt": "…", "data": { …estado completo… } } ],
+    "nextCursor": 41, "hasMore": false }
+```
+
+1. La primera vez, `since=0`: recibe todo el historial (o use los listados para una carga inicial).
+2. Aplique cada cambio localmente: `Created`/`Updated` reemplazan el registro por `data`; `Deleted` lo marca como borrado.
+3. Guarde `nextCursor`. Si `hasMore` es true, consulte de nuevo de inmediato; si no, espere (p. ej. 30 s) o hágalo
+   al recuperar la conexión.
+4. Puede ignorar los cambios cuyo `source` es el propio sistema.
+
+Las secuencias son **correlativas por organización y se asignan en orden de commit** (cada escritura incrementa un
+contador de la organización dentro de su transacción, lo que serializa las escrituras de esa organización). Un
+sistema que pide "lo posterior a N" nunca se salta un cambio, aunque haya escrituras concurrentes.
 
 ## Seguridad
 
@@ -110,9 +158,22 @@ Pruebas: `dotnet test` en la raíz.
 | `DELETE …/products/{code}/devices/{deviceId}` | su organización | todas |
 | `GET /api/admin/audit` | su organización | todo |
 
+### Datos maestros (token de un sistema o de OrgAdmin)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/master/{parties,items,sites}` | Listado con búsqueda y paginación (`includeDeleted` opcional). |
+| GET | `/api/master/{tipo}/{id}` | Un registro (incluye borrados) con `ETag`. |
+| POST | `/api/master/{tipo}` | Alta con Id generado por el hub. |
+| PUT | `/api/master/{tipo}/{id}` | Alta o actualización con Id del sistema; `If-Match` opcional. |
+| DELETE | `/api/master/{tipo}/{id}` | Borrado lógico; `If-Match` opcional. |
+| GET / PUT | `/api/master/company` | Datos de la empresa (PUT solo OrgAdmin). |
+| GET | `/api/master/changes?since=&types=&limit=` | Feed de cambios. |
+
 Los errores se devuelven como ProblemDetails con un `code` estable (`product_not_enabled`, `product_disabled`,
 `access_expired`, `no_access`, `user_limit_reached`, `device_limit_reached`, `device_revoked`,
-`device_mismatch`, `account_locked`, `refresh_token_reused`, `invalid_product`, …).
+`device_mismatch`, `account_locked`, `refresh_token_reused`, `invalid_product`, `version_conflict`,
+`duplicate_document`, `duplicate_sku`, `duplicate_code`, `invalid_document`, …).
 
 ## Integración en una app MAUI
 
@@ -209,6 +270,12 @@ az containerapp create \
 - Desactivar un usuario no le quita sus accesos; deja de poder entrar, pero sigue contando para `maxUsers`.
 - Un equipo liberado puede volver a registrarse si el usuario tiene cupo (para bloquear a una persona,
   desactive al usuario o quítele el acceso).
+- El feed de cambios guarda todas las versiones y no se compacta todavía; con mucho volumen convendrá
+  archivar entradas antiguas.
+- Las escrituras de datos maestros de una misma organización se serializan (es lo que garantiza el orden del
+  feed). Para el volumen típico de datos maestros no es un problema; no aplica a ventas ni movimientos.
+- Los permisos de escritura de datos maestros no distinguen roles dentro de cada sistema: cada sistema decide
+  qué roles pueden editar clientes o artículos.
 
 ## Licencia
 

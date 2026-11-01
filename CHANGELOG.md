@@ -8,6 +8,17 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Fase 2: datos maestros** compartidos entre los sistemas, separados por organización:
+  clientes/proveedores (`/api/master/parties`), artículos (`/api/master/items`), sedes/almacenes
+  (`/api/master/sites`) y datos de la empresa (`/api/master/company`).
+- Feed de cambios `GET /api/master/changes?since=` con secuencia correlativa por organización, asignada en orden
+  de commit, y el estado completo de cada versión.
+- Control de versiones con `ETag` / `If-Match` (412 `version_conflict`), alta idempotente con Id del cliente
+  (`PUT /{id}`), borrado lógico con restauración y escrituras sin cambios que no generan versión.
+- Validación de RUC (11 dígitos) y DNI (8 dígitos); unicidad de documento, SKU y código de sede
+  (409 `duplicate_document`, `duplicate_sku`, `duplicate_code`).
+- Políticas `organization-data` (sistemas y OrgAdmin) y `organization-admin`.
+- Migración `MasterData`.
 - `Dockerfile` multi-etapa (SDK 10.0 → ASP.NET 10.0 *chiseled*, usuario no root, puerto 8080)
   para desplegar en Azure Container Apps.
 - `.dockerignore` que excluye artefactos de compilación, pruebas, llaves y configuración local.

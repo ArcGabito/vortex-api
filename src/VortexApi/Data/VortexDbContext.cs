@@ -15,6 +15,12 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<Party> Parties => Set<Party>();
+    public DbSet<Item> Items => Set<Item>();
+    public DbSet<Site> Sites => Set<Site>();
+    public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
+    public DbSet<ChangeEntry> ChangeEntries => Set<ChangeEntry>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
         // SQLite (usado en pruebas) no sabe comparar/ordenar DateTimeOffset; se guarda como entero.
@@ -107,6 +113,8 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.HasIndex(x => x.OrganizationId);
         });
 
+        ConfigureMasterData(b);
+
         // Los Id Guid se asignan en el constructor; así EF trata como nuevas (Added) las entidades
         // agregadas por navegación (p. ej. product.Members.Add) en lugar de intentar un UPDATE.
         foreach (var entity in b.Model.GetEntityTypes())
@@ -115,5 +123,101 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             if (key?.ClrType == typeof(Guid))
                 key.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
         }
+    }
+
+    private static void ConfigureMasterData(ModelBuilder b)
+    {
+        // Unicidad solo entre registros no borrados (borrado lógico).
+        const string NotDeleted = "[DeletedAt] IS NULL";
+
+        b.Entity<Party>(e =>
+        {
+            MasterEntity(e);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.TradeName).HasMaxLength(200);
+            e.Property(x => x.DocumentType).HasMaxLength(20);
+            e.Property(x => x.DocumentNumber).HasMaxLength(20);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.Property(x => x.Phone).HasMaxLength(50);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            Address(e);
+            e.HasIndex(x => new { x.OrganizationId, x.DocumentType, x.DocumentNumber }).IsUnique()
+                .HasFilter($"{NotDeleted} AND [DocumentNumber] IS NOT NULL");
+            e.HasIndex(x => new { x.OrganizationId, x.Name });
+        });
+
+        b.Entity<Item>(e =>
+        {
+            MasterEntity(e);
+            e.Property(x => x.Sku).HasMaxLength(64);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.Unit).HasMaxLength(20);
+            e.Property(x => x.Barcode).HasMaxLength(64);
+            e.Property(x => x.Category).HasMaxLength(100);
+            e.Property(x => x.Price).HasPrecision(18, 4);
+            e.Property(x => x.CurrencyCode).HasMaxLength(3);
+            e.Property(x => x.TaxCode).HasMaxLength(20);
+            e.HasIndex(x => new { x.OrganizationId, x.Sku }).IsUnique().HasFilter(NotDeleted);
+            e.HasIndex(x => new { x.OrganizationId, x.Barcode });
+        });
+
+        b.Entity<Site>(e =>
+        {
+            MasterEntity(e);
+            e.Property(x => x.Code).HasMaxLength(20);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Phone).HasMaxLength(50);
+            Address(e);
+            e.HasIndex(x => new { x.OrganizationId, x.Code }).IsUnique().HasFilter(NotDeleted);
+        });
+
+        b.Entity<CompanyProfile>(e =>
+        {
+            MasterEntity(e);
+            e.Property(x => x.LegalName).HasMaxLength(200);
+            e.Property(x => x.TradeName).HasMaxLength(200);
+            e.Property(x => x.TaxId).HasMaxLength(20);
+            e.Property(x => x.CountryCode).HasMaxLength(2);
+            e.Property(x => x.CurrencyCode).HasMaxLength(3);
+            e.Property(x => x.TimeZone).HasMaxLength(64);
+            e.Property(x => x.DefaultTaxRate).HasPrecision(5, 2);
+            e.Property(x => x.Email).HasMaxLength(256);
+            e.Property(x => x.Phone).HasMaxLength(50);
+            e.Property(x => x.AddressLine).HasMaxLength(300);
+            e.Property(x => x.District).HasMaxLength(100);
+            e.Property(x => x.City).HasMaxLength(100);
+            e.Property(x => x.Region).HasMaxLength(100);
+            e.Property(x => x.PostalCode).HasMaxLength(20);
+            e.HasIndex(x => x.OrganizationId).IsUnique();
+        });
+
+        b.Entity<ChangeEntry>(e =>
+        {
+            e.Property(x => x.EntityType).HasMaxLength(32);
+            e.Property(x => x.Source).HasMaxLength(16);
+            e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
+            e.HasIndex(x => new { x.OrganizationId, x.EntityType, x.EntityId });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void MasterEntity<T>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<T> e)
+        where T : MasterEntity
+    {
+        e.Property(x => x.Version).IsConcurrencyToken();
+        e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        e.HasIndex(x => new { x.OrganizationId, x.UpdatedAt });
+    }
+
+    private static void Address<T>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<T> e)
+        where T : class
+    {
+        e.Property<string?>("AddressLine").HasMaxLength(300);
+        e.Property<string?>("District").HasMaxLength(100);
+        e.Property<string?>("City").HasMaxLength(100);
+        e.Property<string?>("Region").HasMaxLength(100);
+        e.Property<string?>("PostalCode").HasMaxLength(20);
+        e.Property<string?>("CountryCode").HasMaxLength(2);
     }
 }
