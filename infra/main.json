@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.48.1.52935",
-      "templateHash": "349569262338818787"
+      "templateHash": "7241108393987503395"
     }
   },
   "parameters": {
@@ -265,7 +265,7 @@
         }
       },
       "properties": {
-        "azCliVersion": "2.63.0",
+        "azCliVersion": "2.70.0",
         "retentionInterval": "PT1H",
         "cleanupPreference": "OnSuccess",
         "timeout": "PT15M",
@@ -279,7 +279,7 @@
             "value": "[variables('signingKeySecretName')]"
           }
         ],
-        "scriptContent": "      set -euo pipefail\n      # El permiso recién asignado puede tardar unos minutos en propagarse.\n      for i in $(seq 1 30); do\n        if out=$(az keyvault secret list --vault-name \"$VAULT\" --query \"[?name=='$SECRET'].id\" -o tsv 2>&1); then break; fi\n        echo \"Esperando permisos sobre Key Vault ($i)...\"; sleep 10\n      done\n      if [ -n \"$out\" ]; then echo \"La llave de firma ya existe.\"; exit 0; fi\n      key=$(mktemp)\n      if command -v openssl >/dev/null; then\n        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out \"$key\" 2>/dev/null\n      else\n        python3 -c \"from cryptography.hazmat.primitives.asymmetric import rsa; from cryptography.hazmat.primitives import serialization as s; k=rsa.generate_private_key(65537,3072); open('$key','wb').write(k.private_bytes(s.Encoding.PEM,s.PrivateFormat.PKCS8,s.NoEncryption()))\"\n      fi\n      az keyvault secret set --vault-name \"$VAULT\" --name \"$SECRET\" --file \"$key\" --content-type application/x-pem-file -o none\n      rm -f \"$key\"\n      echo \"Llave de firma creada.\"\n    "
+        "scriptContent": "      set -euo pipefail\n      # El permiso recién asignado puede tardar unos minutos en propagarse.\n      # Solo stdout: la CLI escribe avisos en stderr que no deben confundirse con el resultado.\n      count=\"\"\n      for i in $(seq 1 30); do\n        if count=$(az keyvault secret list --vault-name \"$VAULT\" --query \"length([?name=='$SECRET'])\" -o tsv --only-show-errors 2>/dev/null); then break; fi\n        count=\"\"; echo \"Esperando permisos sobre Key Vault ($i)...\"; sleep 10\n      done\n      if [ -z \"$count\" ]; then echo \"Sin acceso a Key Vault $VAULT.\" >&2; exit 1; fi\n      if [ \"$count\" != \"0\" ]; then echo \"La llave de firma ya existe.\"; exit 0; fi\n      key=$(mktemp)\n      if command -v openssl >/dev/null; then\n        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out \"$key\" 2>/dev/null\n      else\n        python3 -c \"from cryptography.hazmat.primitives.asymmetric import rsa; from cryptography.hazmat.primitives import serialization as s; k=rsa.generate_private_key(65537,3072); open('$key','wb').write(k.private_bytes(s.Encoding.PEM,s.PrivateFormat.PKCS8,s.NoEncryption()))\"\n      fi\n      az keyvault secret set --vault-name \"$VAULT\" --name \"$SECRET\" --file \"$key\" --content-type application/x-pem-file -o none --only-show-errors\n      rm -f \"$key\"\n      echo \"Llave de firma creada.\"\n    "
       },
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token')))]",

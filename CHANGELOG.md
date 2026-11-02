@@ -30,6 +30,10 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - El README se reduce a una presentación; la descripción técnica pasa a `docs/DESCRIPTION.md`.
 
 ### Fixed
+- `.dockerignore` sin barras finales: los builders clásicos (p. ej. `az acr build`) copiaban `bin/` y `obj/` locales a
+  la imagen y la compilación fallaba con `NETSDK1064`.
+- Plantilla de Azure: el script que genera la llave de firma confundía los avisos de la CLI con un secreto
+  existente y no creaba la llave. Ahora usa la CLI 2.70.0 (Azure Linux).
 - Arranque con varias réplicas a la vez: los datos iniciales se crean bajo un bloqueo de aplicación de SQL Server
   y se reintenta la migración si otra réplica creó la base en el mismo instante.
 
