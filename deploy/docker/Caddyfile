@@ -1,0 +1,6 @@
+# HTTPS automático: Caddy obtiene y renueva el certificado de VORTEX_DOMAIN (el DNS debe apuntar a este servidor
+# y los puertos 80/443 deben estar abiertos). Para una red interna sin DNS público, ver docs/DESPLIEGUE.md.
+{$VORTEX_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy hub:8080
+}

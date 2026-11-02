@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using VortexApi.Domain;
 using VortexApi.Security;
@@ -48,11 +49,39 @@ public static class DbSeeder
         var db = services.GetRequiredService<VortexDbContext>();
         var clock = services.GetRequiredService<TimeProvider>();
 
-        if (db.Database.IsSqlServer())
-            await db.Database.MigrateAsync();
-        else
+        if (!db.Database.IsSqlServer())
+        {
             await db.Database.EnsureCreatedAsync();
+            await SeedDataAsync(services, db, clock, options, logger);
+            return;
+        }
 
+        try
+        {
+            await db.Database.MigrateAsync();
+        }
+        catch (SqlException ex) when (ex.Number == 1801)
+        {
+            // Otra réplica creó la base en ese mismo instante; el bloqueo de migraciones solo existe con la base creada.
+            await db.Database.MigrateAsync();
+        }
+
+        // Varias réplicas pueden arrancar a la vez: Migrate ya se protege solo (EF Core 9+), y los datos iniciales
+        // se crean bajo un bloqueo de aplicación para que dos réplicas no creen dos veces los productos o el admin.
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync();
+            await db.Database.ExecuteSqlRawAsync(
+                "EXEC sp_getapplock @Resource = 'vortex-seed', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 120000");
+            await SeedDataAsync(services, db, clock, options, logger);
+            await tx.CommitAsync();
+        });
+    }
+
+    private static async Task SeedDataAsync(IServiceProvider services, VortexDbContext db, TimeProvider clock, SeedOptions options, ILogger logger)
+    {
         foreach (var (code, name) in ProductCodes.Defaults)
         {
             var product = await db.Products.SingleOrDefaultAsync(p => p.Code == code);

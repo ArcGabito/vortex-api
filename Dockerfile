@@ -3,6 +3,7 @@
 # ---------- Build ----------
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+ARG VERSION=
 
 # Restaurar primero solo con los .csproj para aprovechar la caché de capas.
 COPY Directory.Build.props ./
@@ -14,7 +15,8 @@ RUN dotnet publish src/VortexApi/VortexApi.csproj \
     --configuration Release \
     --no-restore \
     --output /app/publish \
-    /p:UseAppHost=false
+    /p:UseAppHost=false \
+    ${VERSION:+/p:Version=$VERSION}
 
 # ---------- Runtime ----------
 # Imagen "chiseled": sin shell ni gestor de paquetes y con usuario no root.

@@ -1,0 +1,9 @@
+# Azure Developer CLI: `azd up` crea toda la infraestructura del hub en un grupo de recursos (ver docs/DESPLIEGUE.md).
+# El hub se despliega desde la imagen publicada (ghcr.io/arcgabito/vortex-api); no hace falta compilar ni un registro propio.
+name: vortex-api
+metadata:
+  template: vortex-api
+infra:
+  provider: bicep
+  path: infra
+  module: main

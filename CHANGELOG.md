@@ -8,6 +8,15 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Despliegue reproducible en la infraestructura de cada empresa** (`docs/DESPLIEGUE.md`):
+  - Azure: plantilla Bicep (`infra/main.bicep`) con Container Apps, Azure SQL con autenticación solo Entra
+    (identidad administrada, sin contraseñas), Key Vault con la llave de firma generada dentro de Azure y
+    Log Analytics. Se despliega con `azd up`, Azure CLI o el botón "Deploy to Azure" (`infra/main.json`).
+  - Servidores propios u otra nube: `deploy/docker/compose.yaml` con el hub, SQL Server y Caddy (HTTPS automático).
+- Workflow **Release**: con un tag `v*` publica la imagen en `ghcr.io/arcgabito/vortex-api` (`:<versión>`,
+  `:<mayor>.<menor>`, `:latest`) y el SDK en GitHub Packages y, si existe el secreto `NUGET_API_KEY`, en nuget.org.
+- CI: job **Infraestructura** (lint y build de Bicep, `main.json` al día, validación del compose).
+- `CONTRIBUTING.md`, `SECURITY.md` y plantilla de pull request.
 - Guía `docs/SISTEMAS.md` para construir Vortex ERP, CRM, WMS o POS sobre el hub (también para agentes de IA):
   levantar el hub, referenciar el SDK, sesión, qué datos son del hub, sincronización, formato de los eventos
   (versión 1), reglas para que los sistemas se puedan reemplazar, errores y plantilla de `CLAUDE.md`.
@@ -15,8 +24,14 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   automático, y los usuarios `ana@vortex.local` (OrgAdmin) y `luis@vortex.local`.
 - SDK `VortexApi.Client` como paquete NuGet (metadatos, README, documentación XML y símbolos).
   `scripts/pack-sdk.sh` lo empaqueta en un feed local con una versión `-dev` nueva en cada ejecución.
-- CI: el paquete del SDK queda como artefacto `sdk-nupkg`. Workflow `Publicar SDK`: con un tag `v*` lo publica
-  en GitHub Packages y, si existe el secreto `NUGET_API_KEY`, en nuget.org.
+- CI: el paquete del SDK queda como artefacto `sdk-nupkg`.
+
+### Changed
+- El README se reduce a una presentación; la descripción técnica pasa a `docs/DESCRIPTION.md`.
+
+### Fixed
+- Arranque con varias réplicas a la vez: los datos iniciales se crean bajo un bloqueo de aplicación de SQL Server
+  y se reintenta la migración si otra réplica creó la base en el mismo instante.
 
 ## [0.3.0] - 2026-11-01
 

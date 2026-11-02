@@ -1,0 +1,522 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.48.1.52935",
+      "templateHash": "349569262338818787"
+    }
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "defaultValue": "vortex",
+      "minLength": 2,
+      "maxLength": 20,
+      "metadata": {
+        "description": "Nombre corto de la instalación (minúsculas y guiones). Se usa en el nombre de los recursos."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Región de los recursos. Por defecto, la del grupo de recursos."
+      }
+    },
+    "image": {
+      "type": "string",
+      "defaultValue": "ghcr.io/arcgabito/vortex-api:latest",
+      "metadata": {
+        "description": "Imagen del hub. Fijar una versión (p. ej. ghcr.io/arcgabito/vortex-api:0.4.0) en producción."
+      }
+    },
+    "adminEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Email del primer PlatformAdmin (solo se usa si aún no existe ninguno)."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "minLength": 12,
+      "metadata": {
+        "description": "Contraseña del primer PlatformAdmin: mínimo 12 caracteres, no debe contener el email."
+      }
+    },
+    "publicUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "URL pública del hub si se usa un dominio propio (https://hub.miempresa.com). Vacío = la URL de Container Apps."
+      }
+    },
+    "sqlSku": {
+      "type": "string",
+      "defaultValue": "S0",
+      "allowedValues": [
+        "Basic",
+        "S0",
+        "S1",
+        "S2",
+        "GP_S_Gen5_1",
+        "GP_S_Gen5_2"
+      ],
+      "metadata": {
+        "description": "Plan de Azure SQL. Basic/S0/S1 (DTU) son los más económicos; GP_S_Gen5_1 es serverless (vCore)."
+      }
+    },
+    "minReplicas": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "Réplicas mínimas. Al menos 1: el despachador de webhooks corre dentro del hub."
+      }
+    },
+    "maxReplicas": {
+      "type": "int",
+      "defaultValue": 3,
+      "minValue": 1,
+      "metadata": {
+        "description": "Réplicas máximas."
+      }
+    },
+    "cpu": {
+      "type": "string",
+      "defaultValue": "0.5",
+      "allowedValues": [
+        "0.25",
+        "0.5",
+        "1",
+        "2"
+      ],
+      "metadata": {
+        "description": "vCPU por réplica."
+      }
+    },
+    "memory": {
+      "type": "string",
+      "defaultValue": "1Gi",
+      "allowedValues": [
+        "0.5Gi",
+        "1Gi",
+        "2Gi",
+        "4Gi"
+      ],
+      "metadata": {
+        "description": "Memoria por réplica (debe corresponder a la vCPU: 0.25→0.5Gi, 0.5→1Gi, 1→2Gi, 2→4Gi)."
+      }
+    },
+    "docsEnabled": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Publicar la documentación de la API en /docs y /openapi/v1.json."
+      }
+    },
+    "registryServer": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Registro privado (opcional): servidor, usuario y contraseña. Vacío para imágenes públicas como ghcr.io/arcgabito."
+      }
+    },
+    "registryUsername": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "registryPassword": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    }
+  },
+  "variables": {
+    "token": "[uniqueString(resourceGroup().id, parameters('name'))]",
+    "appName": "[format('ca-{0}', parameters('name'))]",
+    "allTags": "[union(createObject('vortex-installation', parameters('name')), parameters('tags'))]",
+    "signingKeySecretName": "jwt-signing-key",
+    "adminPasswordSecretName": "seed-admin-password",
+    "registryPasswordSecretName": "registry-password",
+    "useRegistry": "[not(empty(parameters('registryServer')))]",
+    "sqlSkus": {
+      "Basic": {
+        "name": "Basic",
+        "tier": "Basic"
+      },
+      "S0": {
+        "name": "S0",
+        "tier": "Standard"
+      },
+      "S1": {
+        "name": "S1",
+        "tier": "Standard"
+      },
+      "S2": {
+        "name": "S2",
+        "tier": "Standard"
+      },
+      "GP_S_Gen5_1": {
+        "name": "GP_S_Gen5",
+        "tier": "GeneralPurpose",
+        "family": "Gen5",
+        "capacity": 1
+      },
+      "GP_S_Gen5_2": {
+        "name": "GP_S_Gen5",
+        "tier": "GeneralPurpose",
+        "family": "Gen5",
+        "capacity": 2
+      }
+    },
+    "serverless": "[startsWith(parameters('sqlSku'), 'GP_S_')]",
+    "keyVaultSecretsUser": "4633458b-17de-408a-b874-0445c86b69e6",
+    "keyVaultSecretsOfficer": "b86a8fe4-44ce-4948-aee5-eccb2c155cd7"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('id-{0}-{1}', parameters('name'), variables('token'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]"
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('id-{0}-setup-{1}', parameters('name'), variables('token'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]"
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "enableRbacAuthorization": true,
+        "enableSoftDelete": true,
+        "softDeleteRetentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24), variables('adminPasswordSecretName'))]",
+      "properties": {
+        "value": "[parameters('adminPassword')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))), variables('keyVaultSecretsUser'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUser'))]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token'))), variables('keyVaultSecretsOfficer'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsOfficer'))]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2023-08-01",
+      "name": "generate-signing-key",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token'))))]": {}
+        }
+      },
+      "properties": {
+        "azCliVersion": "2.63.0",
+        "retentionInterval": "PT1H",
+        "cleanupPreference": "OnSuccess",
+        "timeout": "PT15M",
+        "environmentVariables": [
+          {
+            "name": "VAULT",
+            "value": "[take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)]"
+          },
+          {
+            "name": "SECRET",
+            "value": "[variables('signingKeySecretName')]"
+          }
+        ],
+        "scriptContent": "      set -euo pipefail\n      # El permiso recién asignado puede tardar unos minutos en propagarse.\n      for i in $(seq 1 30); do\n        if out=$(az keyvault secret list --vault-name \"$VAULT\" --query \"[?name=='$SECRET'].id\" -o tsv 2>&1); then break; fi\n        echo \"Esperando permisos sobre Key Vault ($i)...\"; sleep 10\n      done\n      if [ -n \"$out\" ]; then echo \"La llave de firma ya existe.\"; exit 0; fi\n      key=$(mktemp)\n      if command -v openssl >/dev/null; then\n        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out \"$key\" 2>/dev/null\n      else\n        python3 -c \"from cryptography.hazmat.primitives.asymmetric import rsa; from cryptography.hazmat.primitives import serialization as s; k=rsa.generate_private_key(65537,3072); open('$key','wb').write(k.private_bytes(s.Encoding.PEM,s.PrivateFormat.PKCS8,s.NoEncryption()))\"\n      fi\n      az keyvault secret set --vault-name \"$VAULT\" --name \"$SECRET\" --file \"$key\" --content-type application/x-pem-file -o none\n      rm -f \"$key\"\n      echo \"Llave de firma creada.\"\n    "
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token')))]",
+        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-setup-{1}', parameters('name'), variables('token'))), variables('keyVaultSecretsOfficer')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2021-11-01",
+      "name": "[format('sql-{0}-{1}', parameters('name'), variables('token'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "properties": {
+        "minimalTlsVersion": "1.2",
+        "publicNetworkAccess": "Enabled",
+        "administrators": {
+          "administratorType": "ActiveDirectory",
+          "azureADOnlyAuthentication": true,
+          "login": "[format('id-{0}-{1}', parameters('name'), variables('token'))]",
+          "sid": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))), '2023-01-31').clientId]",
+          "tenantId": "[subscription().tenantId]",
+          "principalType": "Application"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/firewallRules",
+      "apiVersion": "2021-11-01",
+      "name": "[format('{0}/{1}', format('sql-{0}-{1}', parameters('name'), variables('token')), 'AllowAllWindowsAzureIps')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', format('sql-{0}-{1}', parameters('name'), variables('token')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2021-11-01",
+      "name": "[format('{0}/{1}', format('sql-{0}-{1}', parameters('name'), variables('token')), 'vortex')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "sku": "[variables('sqlSkus')[parameters('sqlSku')]]",
+      "properties": "[if(variables('serverless'), createObject('autoPauseDelay', -1, 'minCapacity', json('0.5')), createObject())]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', format('sql-{0}-{1}', parameters('name'), variables('token')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[format('log-{0}-{1}', parameters('name'), variables('token'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[format('cae-{0}-{1}', parameters('name'), variables('token'))]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', format('log-{0}-{1}', parameters('name'), variables('token'))), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', format('log-{0}-{1}', parameters('name'), variables('token'))), '2023-09-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', format('log-{0}-{1}', parameters('name'), variables('token')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[variables('appName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('allTags')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))))]": {}
+        }
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('cae-{0}-{1}', parameters('name'), variables('token')))]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "transport": "auto",
+            "allowInsecure": false
+          },
+          "secrets": "[concat(createArray(createObject('name', variables('signingKeySecretName'), 'keyVaultUrl', format('{0}secrets/{1}', reference(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), '2023-07-01').vaultUri, variables('signingKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token')))), createObject('name', variables('adminPasswordSecretName'), 'keyVaultUrl', reference(resourceId('Microsoft.KeyVault/vaults/secrets', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24), variables('adminPasswordSecretName')), '2023-07-01').secretUri, 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))))), if(variables('useRegistry'), createArray(createObject('name', variables('registryPasswordSecretName'), 'value', parameters('registryPassword'))), createArray()))]",
+          "registries": "[if(variables('useRegistry'), createArray(createObject('server', parameters('registryServer'), 'username', parameters('registryUsername'), 'passwordSecretRef', variables('registryPasswordSecretName'))), createArray())]"
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "hub",
+              "image": "[parameters('image')]",
+              "resources": {
+                "cpu": "[json(parameters('cpu'))]",
+                "memory": "[parameters('memory')]"
+              },
+              "env": [
+                {
+                  "name": "ConnectionStrings__Vortex",
+                  "value": "[format('Server=tcp:{0},1433;Database={1};Authentication=Active Directory Managed Identity;User Id={2};Encrypt=True;TrustServerCertificate=False;Connection Timeout=60', reference(resourceId('Microsoft.Sql/servers', format('sql-{0}-{1}', parameters('name'), variables('token'))), '2021-11-01').fullyQualifiedDomainName, 'vortex', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))), '2023-01-31').clientId)]"
+                },
+                {
+                  "name": "Jwt__Issuer",
+                  "value": "[if(empty(parameters('publicUrl')), format('https://{0}.{1}', variables('appName'), reference(resourceId('Microsoft.App/managedEnvironments', format('cae-{0}-{1}', parameters('name'), variables('token'))), '2024-03-01').defaultDomain), parameters('publicUrl'))]"
+                },
+                {
+                  "name": "Jwt__SigningKeyPem",
+                  "secretRef": "[variables('signingKeySecretName')]"
+                },
+                {
+                  "name": "Seed__AdminEmail",
+                  "value": "[parameters('adminEmail')]"
+                },
+                {
+                  "name": "Seed__AdminPassword",
+                  "secretRef": "[variables('adminPasswordSecretName')]"
+                },
+                {
+                  "name": "Docs__Enabled",
+                  "value": "[string(parameters('docsEnabled'))]"
+                }
+              ],
+              "probes": [
+                {
+                  "type": "Startup",
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 8080
+                  },
+                  "periodSeconds": 10,
+                  "failureThreshold": 30
+                },
+                {
+                  "type": "Liveness",
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 8080
+                  },
+                  "periodSeconds": 30
+                },
+                {
+                  "type": "Readiness",
+                  "httpGet": {
+                    "path": "/health",
+                    "port": 8080
+                  },
+                  "periodSeconds": 10
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": "[parameters('minReplicas')]",
+            "maxReplicas": "[parameters('maxReplicas')]",
+            "rules": [
+              {
+                "name": "http",
+                "http": {
+                  "metadata": {
+                    "concurrentRequests": "50"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24), variables('adminPasswordSecretName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token')))]",
+        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('id-{0}-{1}', parameters('name'), variables('token'))), variables('keyVaultSecretsUser')))]",
+        "[resourceId('Microsoft.Sql/servers/databases', format('sql-{0}-{1}', parameters('name'), variables('token')), 'vortex')]",
+        "[resourceId('Microsoft.App/managedEnvironments', format('cae-{0}-{1}', parameters('name'), variables('token')))]",
+        "[resourceId('Microsoft.Resources/deploymentScripts', 'generate-signing-key')]",
+        "[resourceId('Microsoft.Sql/servers/firewallRules', format('sql-{0}-{1}', parameters('name'), variables('token')), 'AllowAllWindowsAzureIps')]",
+        "[resourceId('Microsoft.Sql/servers', format('sql-{0}-{1}', parameters('name'), variables('token')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "url": {
+      "type": "string",
+      "metadata": {
+        "description": "URL del hub (configurar en los sistemas como Vortex:HubUrl)."
+      },
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', variables('appName')), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "issuer": {
+      "type": "string",
+      "metadata": {
+        "description": "Issuer de los tokens (para la validación sin conexión en los sistemas)."
+      },
+      "value": "[if(empty(parameters('publicUrl')), format('https://{0}.{1}', variables('appName'), reference(resourceId('Microsoft.App/managedEnvironments', format('cae-{0}-{1}', parameters('name'), variables('token'))), '2024-03-01').defaultDomain), parameters('publicUrl'))]"
+    },
+    "containerAppName": {
+      "type": "string",
+      "value": "[variables('appName')]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[take(format('kv{0}{1}', replace(parameters('name'), '-', ''), variables('token')), 24)]"
+    },
+    "sqlServerName": {
+      "type": "string",
+      "value": "[format('sql-{0}-{1}', parameters('name'), variables('token'))]"
+    },
+    "databaseName": {
+      "type": "string",
+      "value": "vortex"
+    },
+    "identityName": {
+      "type": "string",
+      "value": "[format('id-{0}-{1}', parameters('name'), variables('token'))]"
+    }
+  }
+}

@@ -7,3 +7,10 @@ TestResults/
 # Llaves de firma generadas en desarrollo: nunca se versionan.
 **/keys/
 appsettings.Production.json
+
+# Azure Developer CLI (valores del entorno, pueden incluir secretos)
+.azure/
+
+# Despliegue con Docker Compose: secretos locales
+deploy/docker/.env
+deploy/docker/secrets/
