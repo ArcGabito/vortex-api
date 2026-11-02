@@ -75,7 +75,7 @@ En el repo del sistema, un `nuget.config` junto a la solución:
 y `dotnet add package VortexApi.Client --prerelease`. Cada ejecución de `pack-sdk.sh` genera una versión nueva;
 para tomarla, vuelve a ejecutar `dotnet add package VortexApi.Client --prerelease`.
 
-**C. Paquete publicado.** Al crear un tag `vX.Y.Z` en `vortex-api`, el workflow `Publicar SDK` lo sube a GitHub
+**C. Paquete publicado.** Al crear un tag `vX.Y.Z` en `vortex-api`, el workflow `Release` lo sube a GitHub
 Packages (`https://nuget.pkg.github.com/ArcGabito/index.json`, requiere un token con `read:packages`) y, si está
 configurado el secreto `NUGET_API_KEY`, a nuget.org. Cada build del CI también deja el `.nupkg` como artefacto
 `sdk-nupkg`.

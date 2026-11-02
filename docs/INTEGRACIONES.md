@@ -189,7 +189,7 @@ def hook():
     return "", 204
 ```
 
-(La verificación en C# está en el README.)
+(La verificación en C# está en [DESCRIPTION.md](DESCRIPTION.md).)
 
 Reglas de entrega: **al menos una vez** (descarte duplicados por `id`), sin orden garantizado (use `sequence`),
 reintentos con espera exponencial hasta 10 intentos si su endpoint no responde 2xx en 10 s. Responda rápido y

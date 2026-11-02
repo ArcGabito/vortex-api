@@ -1,0 +1,69 @@
+# Hub Vortex en servidores propios u otra nube: hub + SQL Server + Caddy (HTTPS automático con Let's Encrypt).
+# Guía: docs/DESPLIEGUE.md. Resumen:
+#   cp .env.example .env            # completar
+#   mkdir -p secrets && openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out secrets/signing-key.pem
+#   docker compose up -d
+name: vortex
+
+services:
+  hub:
+    image: ${VORTEX_IMAGE:-ghcr.io/arcgabito/vortex-api:latest}
+    restart: unless-stopped
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Vortex: "Server=sqlserver,1433;Database=Vortex;User Id=sa;Password=${SQL_SA_PASSWORD:?Falta SQL_SA_PASSWORD};TrustServerCertificate=True"
+      Jwt__Issuer: "https://${VORTEX_DOMAIN:?Falta VORTEX_DOMAIN}"
+      Jwt__SigningKeyPath: /run/secrets/signing_key
+      Seed__AdminEmail: ${VORTEX_ADMIN_EMAIL:?Falta VORTEX_ADMIN_EMAIL}
+      Seed__AdminPassword: ${VORTEX_ADMIN_PASSWORD:?Falta VORTEX_ADMIN_PASSWORD}
+      Docs__Enabled: ${VORTEX_DOCS_ENABLED:-true}
+      # Webhooks hacia sistemas de la misma red (on-premise). Dejar en false si los receptores son públicos.
+      Webhooks__AllowPrivateNetworks: ${VORTEX_WEBHOOKS_PRIVATE_NETWORKS:-false}
+    secrets:
+      - signing_key
+    expose:
+      - "8080"
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      # Developer es gratis solo para pruebas; en producción usar Express (gratis, hasta 10 GB) o una licencia.
+      MSSQL_PID: ${SQL_EDITION:-Express}
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:?Falta SQL_SA_PASSWORD}
+    volumes:
+      - sql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - hub
+    environment:
+      VORTEX_DOMAIN: ${VORTEX_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+secrets:
+  signing_key:
+    file: ./secrets/signing-key.pem
+
+volumes:
+  sql-data:
+  caddy-data:
+  caddy-config:

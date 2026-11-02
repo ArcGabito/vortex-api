@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": { "value": "${VORTEX_NAME=vortex}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "image": { "value": "${VORTEX_IMAGE=ghcr.io/arcgabito/vortex-api:latest}" },
+    "publicUrl": { "value": "${VORTEX_PUBLIC_URL=}" },
+    "sqlSku": { "value": "${VORTEX_SQL_SKU=S0}" },
+    "tags": { "value": { "azd-env-name": "${AZURE_ENV_NAME}" } }
+  }
+}
