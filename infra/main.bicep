@@ -153,7 +153,7 @@ resource signingKey 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   }
   dependsOn: [setupWritesSecrets]
   properties: {
-    azCliVersion: '2.63.0'
+    azCliVersion: '2.70.0'
     retentionInterval: 'PT1H'
     cleanupPreference: 'OnSuccess'
     timeout: 'PT15M'
@@ -164,18 +164,21 @@ resource signingKey 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     scriptContent: '''
       set -euo pipefail
       # El permiso recién asignado puede tardar unos minutos en propagarse.
+      # Solo stdout: la CLI escribe avisos en stderr que no deben confundirse con el resultado.
+      count=""
       for i in $(seq 1 30); do
-        if out=$(az keyvault secret list --vault-name "$VAULT" --query "[?name=='$SECRET'].id" -o tsv 2>&1); then break; fi
-        echo "Esperando permisos sobre Key Vault ($i)..."; sleep 10
+        if count=$(az keyvault secret list --vault-name "$VAULT" --query "length([?name=='$SECRET'])" -o tsv --only-show-errors 2>/dev/null); then break; fi
+        count=""; echo "Esperando permisos sobre Key Vault ($i)..."; sleep 10
       done
-      if [ -n "$out" ]; then echo "La llave de firma ya existe."; exit 0; fi
+      if [ -z "$count" ]; then echo "Sin acceso a Key Vault $VAULT." >&2; exit 1; fi
+      if [ "$count" != "0" ]; then echo "La llave de firma ya existe."; exit 0; fi
       key=$(mktemp)
       if command -v openssl >/dev/null; then
         openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out "$key" 2>/dev/null
       else
         python3 -c "from cryptography.hazmat.primitives.asymmetric import rsa; from cryptography.hazmat.primitives import serialization as s; k=rsa.generate_private_key(65537,3072); open('$key','wb').write(k.private_bytes(s.Encoding.PEM,s.PrivateFormat.PKCS8,s.NoEncryption()))"
       fi
-      az keyvault secret set --vault-name "$VAULT" --name "$SECRET" --file "$key" --content-type application/x-pem-file -o none
+      az keyvault secret set --vault-name "$VAULT" --name "$SECRET" --file "$key" --content-type application/x-pem-file -o none --only-show-errors
       rm -f "$key"
       echo "Llave de firma creada."
     '''
