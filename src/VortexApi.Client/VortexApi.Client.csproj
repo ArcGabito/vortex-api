@@ -1,10 +1,29 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <!-- Paquete NuGet del SDK para los sistemas de la suite (ERP, CRM, WMS, POS) y sus apps MAUI. -->
+  <PropertyGroup>
+    <PackageId>VortexApi.Client</PackageId>
+    <Description>SDK del hub Vortex: inicio de sesión con renovación automática, modo sin conexión, sincronización offline-first de datos maestros y eventos entre Vortex ERP, CRM, WMS y POS.</Description>
+    <PackageTags>vortex;erp;crm;wms;pos;maui;offline-first;sync</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/ArcGabito/vortex-api</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />

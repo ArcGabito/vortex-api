@@ -7,6 +7,17 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+- Guía `docs/SISTEMAS.md` para construir Vortex ERP, CRM, WMS o POS sobre el hub (también para agentes de IA):
+  levantar el hub, referenciar el SDK, sesión, qué datos son del hub, sincronización, formato de los eventos
+  (versión 1), reglas para que los sistemas se puedan reemplazar, errores y plantilla de `CLAUDE.md`.
+- Organización demo de desarrollo (`Seed:Demo`): **Vortex Demo** con los 4 sistemas habilitados y acceso
+  automático, y los usuarios `ana@vortex.local` (OrgAdmin) y `luis@vortex.local`.
+- SDK `VortexApi.Client` como paquete NuGet (metadatos, README, documentación XML y símbolos).
+  `scripts/pack-sdk.sh` lo empaqueta en un feed local con una versión `-dev` nueva en cada ejecución.
+- CI: el paquete del SDK queda como artefacto `sdk-nupkg`. Workflow `Publicar SDK`: con un tag `v*` lo publica
+  en GitHub Packages y, si existe el secreto `NUGET_API_KEY`, en nuget.org.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

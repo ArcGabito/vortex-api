@@ -86,6 +86,7 @@ public sealed class VortexSync(
     public VortexSync OnCompany(Func<VortexMasterChange<VortexCompany>, CancellationToken, Task> handler) => Typed("company", handler);
 
     /// <param name="pattern">Tipo exacto (<c>sale.completed</c>), prefijo (<c>sale.*</c>) o <c>*</c>.</param>
+    /// <param name="handler">Se llama una vez por evento recibido de otro sistema; debe ser idempotente.</param>
     public VortexSync OnEvent(string pattern, Func<VortexEvent, CancellationToken, Task> handler)
     {
         _eventHandlers.Add((pattern, handler));
