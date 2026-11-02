@@ -7,6 +7,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
 ### Added
 - **Despliegue reproducible en la infraestructura de cada empresa** (`docs/DESPLIEGUE.md`):
   - Azure: plantilla Bicep (`infra/main.bicep`) con Container Apps, Azure SQL con autenticación solo Entra
@@ -153,7 +155,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - Pruebas de integración de los flujos de seguridad.
 - `docker-compose.yml` con SQL Server para desarrollo local.
 
-[Unreleased]: https://github.com/ArcGabito/vortex-api/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ArcGabito/vortex-api/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ArcGabito/vortex-api/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ArcGabito/vortex-api/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ArcGabito/vortex-api/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ArcGabito/vortex-api/releases/tag/v0.1.0
