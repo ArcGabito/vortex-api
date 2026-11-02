@@ -19,6 +19,9 @@ este hub permite usarlos juntos o reemplazar uno por otro sin perder usuarios ni
 | `src/VortexApi` | Web API (controladores, EF Core + SQL Server, JWT RS256). |
 | `src/VortexApi.Client` | SDK para las apps MAUI: sesión, sincronización offline-first, eventos y validación sin conexión. |
 | `tests/VortexApi.Tests` | Pruebas de integración (SQLite en memoria). |
+| `docs/SISTEMAS.md` | Guía para construir ERP, CRM, WMS o POS sobre el hub (también para agentes de IA). |
+| `docs/INTEGRACIONES.md` | Guía para aplicaciones de terceros (OAuth2). |
+| `scripts/pack-sdk.sh` | Empaqueta el SDK en un feed NuGet local para los sistemas en desarrollo. |
 
 ## Modelo
 
@@ -225,6 +228,8 @@ En `Development`:
 - Documentación interactiva: http://localhost:5299/docs (OpenAPI en `/openapi/v1.json`).
 - PlatformAdmin: `admin@vortex.local` / `Vortex-Admin-2026!`.
 - Claves de sistema: `vxp_erp_dev_key_change_me`, `vxp_crm_…`, `vxp_wms_…`, `vxp_pos_…`.
+- Organización **Vortex Demo** con los 4 sistemas habilitados y acceso automático: `ana@vortex.local` (OrgAdmin) y
+  `luis@vortex.local`, ambos con `Suite-Local-2026!` (`Seed:Demo`, solo en `appsettings.Development.json`).
 - La llave de firma se genera en `keys/dev-signing-key.pem` (ignorado por git).
 
 `VortexApi.http` tiene el flujo completo: crear organización → habilitar sistema → usuario → acceso → login.
@@ -304,6 +309,10 @@ Los errores se devuelven como ProblemDetails con un `code` estable (`product_not
 `duplicate_document`, `duplicate_sku`, `duplicate_code`, `invalid_document`, …).
 
 ## Integración en una app MAUI (SDK `VortexApi.Client`)
+
+> La guía completa para construir un sistema de la suite (datos que son del hub, formato de los eventos, reglas
+> para que los sistemas se puedan reemplazar, referencia del SDK por proyecto o paquete NuGet) está en
+> [docs/SISTEMAS.md](docs/SISTEMAS.md).
 
 El SDK tiene tres piezas:
 

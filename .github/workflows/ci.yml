@@ -45,6 +45,15 @@ jobs:
           name: test-results
           path: "**/TestResults/*.trx"
 
+      - name: Empaquetar SDK
+        run: dotnet pack src/VortexApi.Client/VortexApi.Client.csproj --configuration Release --no-build --output artifacts
+
+      - name: Publicar paquete del SDK
+        uses: actions/upload-artifact@v7
+        with:
+          name: sdk-nupkg
+          path: artifacts/*
+
   docker:
     name: Imagen Docker
     runs-on: ubuntu-latest
