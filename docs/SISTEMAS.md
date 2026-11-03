@@ -8,6 +8,27 @@ funcionen solos, juntos o reemplazándose entre sí.
 > artículos, sedes, datos de la empresa o comunicación con otro sistema de la suite. La referencia exacta de cada
 > endpoint está en `http://localhost:5299/docs` (o `/openapi/v1.json`) con el hub levantado.
 
+## Repositorios de la suite
+
+| Sistema | Repositorio | `ProductCode` |
+|---|---|---|
+| Hub | [ArcGabito/vortex-api](https://github.com/ArcGabito/vortex-api) | — |
+| Vortex ERP | [ArcGabito/vortex-erp](https://github.com/ArcGabito/vortex-erp) | `ERP` |
+| Vortex CRM | [ArcGabito/vortex-crm](https://github.com/ArcGabito/vortex-crm) | `CRM` |
+| Vortex WMS | [ArcGabito/vortex-wms](https://github.com/ArcGabito/vortex-wms) | `WMS` |
+| Vortex POS | [ArcGabito/vortex-pos](https://github.com/ArcGabito/vortex-pos) | `POS` |
+
+Los cuatro sistemas son apps .NET MAUI Blazor Hybrid con base SQLite local y comparten la misma estructura
+(`src/Vortex<Sistema>`, `src/Vortex<Sistema>.Core`, `tests/Vortex<Sistema>.Core.Tests`); Vortex WMS fue el primero
+y sirve de referencia. Toda la suite es AGPL-3.0. En cada repo la rama `main` está protegida: los cambios entran por
+pull request con el CI en verde.
+
+### Eventos internos de un sistema
+
+Si un sistema necesita replicar **sus propios datos** entre los equipos de una misma organización y ningún evento de
+la suite los cubre, publica eventos de su propia categoría (`crm.*`, `erp.*`…) y se suscribe con
+`IncludeOwnEvents = true`. Los demás sistemas los ignoran. Como cualquier evento nuevo, van al catálogo.
+
 ## 1. Levantar el hub en local
 
 Requisitos: .NET SDK 10 y Docker. El hub vive en `~/vortex-api` (repo `ArcGabito/vortex-api`).
@@ -260,13 +281,14 @@ Catálogo actual (`GET /api/events/catalog`):
 |---|---|---|
 | `sale.completed`, `sale.voided`, `sale.returned` | POS | ERP, WMS (y CRM `sale.completed`) |
 | `quote.accepted`, `deal.won` | CRM | ERP |
-| `order.created` | ERP, CRM | WMS |
+| `order.created` | ERP, CRM (y WMS cuando funciona solo) | WMS, ERP |
 | `invoice.issued` | ERP | CRM, POS |
 | `payment.received` | ERP, POS | CRM, ERP |
 | `purchase_order.created` | ERP | WMS |
 | `goods.received` | WMS | ERP |
 | `stock.adjusted`, `stock.transferred` | WMS | ERP, POS |
 | `shipment.dispatched` | WMS | ERP, CRM |
+| `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
 | `master.{party,item,site,company}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 
 ### Contenido de los eventos (versión 1)

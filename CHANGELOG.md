@@ -7,6 +7,14 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Added
+- Catálogo de eventos: `crm.record.upserted` y `crm.record.deleted` (replicación de los datos propios del CRM
+  entre los equipos de una organización).
+- `docs/SISTEMAS.md`: tabla de repositorios de la suite y regla para los eventos internos de un sistema.
+
+### Changed
+- Catálogo de eventos: `order.created` también lo publica el WMS (cuando funciona sin ERP ni CRM) y lo consume el ERP.
+
 ## [0.4.0] - 2026-11-01
 
 ### Added
