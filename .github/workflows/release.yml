@@ -3,7 +3,7 @@ name: Release
 # Al crear un tag de versión (v0.4.0, v0.4.0-beta.1, …):
 # - Imagen Docker en GitHub Container Registry: ghcr.io/<owner>/vortex-api:<versión> (y :<mayor>.<menor>, :latest
 #   solo para versiones estables).
-# - SDK VortexApi.Client en GitHub Packages y, si existe el secreto NUGET_API_KEY, en nuget.org.
+# - SDK VortexApi.Client y base común VortexApi.Suite en GitHub Packages y, si existe el secreto NUGET_API_KEY, en nuget.org.
 on:
   push:
     tags: ["v*"]
@@ -111,9 +111,11 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Empaquetar
-        run: >
-          dotnet pack src/VortexApi.Client/VortexApi.Client.csproj --configuration Release --output artifacts
-          -p:Version=${{ needs.version.outputs.value }} -p:ContinuousIntegrationBuild=true
+        run: |
+          for project in VortexApi.Client VortexApi.Suite; do
+            dotnet pack "src/$project/$project.csproj" --configuration Release --output artifacts \
+              -p:Version=${{ needs.version.outputs.value }} -p:ContinuousIntegrationBuild=true
+          done
 
       - uses: actions/upload-artifact@v7
         with:
