@@ -8,6 +8,11 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Paquete **`VortexApi.Suite`**, base común de ERP, CRM, WMS y POS: impuestos por país (Perú, LATAM, EE. UU., Reino
+  Unido y UE) con desglose por tasa, monedas ISO 4217 con su redondeo, formatos regionales y hora de la empresa,
+  permisos por rol, auditoría y textos en español, inglés y portugués. Se empaqueta con el SDK (`scripts/pack-sdk.sh`,
+  CI y Release).
+- `docs/ROADMAP-SUITE.md`: hoja de ruta internacional de la suite.
 - Catálogo de eventos: `crm.record.upserted` y `crm.record.deleted` (replicación de los datos propios del CRM
   entre los equipos de una organización).
 - `docs/SISTEMAS.md`: tabla de repositorios de la suite y regla para los eventos internos de un sistema.

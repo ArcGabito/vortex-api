@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    Base común de los sistemas de la suite (ERP, CRM, WMS, POS): impuestos por país, monedas, regiones, permisos,
+    auditoría y textos en varios idiomas. Sin dependencias: sirve igual en MAUI, consola o servidor.
+  -->
+  <PropertyGroup>
+    <PackageId>VortexApi.Suite</PackageId>
+    <Description>Base común de la suite Vortex: impuestos por país (Perú, LATAM, EE. UU., Europa), monedas ISO 4217 con su redondeo, formatos regionales, permisos por rol, auditoría y textos en español, inglés y portugués.</Description>
+    <PackageTags>vortex;erp;crm;wms;pos;tax;vat;iva;igv;currency;i18n;permissions</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/ArcGabito/vortex-api</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Text\*.json" LogicalName="VortexApi.Suite.Text.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="VortexApi.Suite.Tests" />
+  </ItemGroup>
+
+</Project>

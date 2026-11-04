@@ -109,6 +109,23 @@ using VortexApi.Client.Sessions;  // VortexSessionManager, ISessionStore, InMemo
 using VortexApi.Client.Sync;      // VortexSync, IVortexSyncStore, JsonFileSyncStore
 ```
 
+### Base común: `VortexApi.Suite`
+
+Junto al SDK se empaqueta **`VortexApi.Suite`** (mismo feed, misma versión), que los cuatro sistemas usan para no
+resolver cada uno lo mismo de forma distinta. Ver [ROADMAP-SUITE.md](ROADMAP-SUITE.md), fase 1.
+
+- **Impuestos:** `TaxCatalog.For(company.CountryCode, company.DefaultTaxRate)` da el régimen del país (Perú, LATAM,
+  EE. UU., Reino Unido y UE) y `TaxCalculator.Calculate` desglosa por tasa. El `taxCode` de un artículo es una
+  categoría (`standard`, `reduced`, `super_reduced`, `increased`, `zero`, `exempt`, `out_of_scope`); los códigos
+  anteriores (`igv`, `exonerado`, `inafecto`) siguen valiendo. La tasa general que configura el OrgAdmin en el hub manda.
+- **Monedas:** `Currencies.Get(code)` con decimales y símbolo; todo importe se redondea con la moneda del documento.
+- **Regiones e idiomas:** `RegionalSettings.CultureFor(idioma, país)`, hora de la empresa con `company.timeZone`, y
+  `TextCatalog` para los textos en español, inglés y portugués.
+- **Permisos:** cada sistema declara su `PermissionMatrix` (roles en minúsculas, como se asignan en
+  `PUT /api/admin/organizations/{orgId}/products/{code}/members/{userId}`). OrgAdmin y PlatformAdmin pueden todo.
+  Se validan en los servicios de Core, no solo en la interfaz.
+- **Auditoría:** `AuditEntry` y `AuditSchema` para la bitácora local de acciones sensibles.
+
 ## 3. Conexión y sesión
 
 Cada sistema se identifica con su código (`ERP`, `CRM`, `WMS`, `POS`) y su clave de sistema. Ambos van en la
