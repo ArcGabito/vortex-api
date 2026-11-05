@@ -343,9 +343,13 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 //                        "saleId": "guid | null", "amount": 0, "currencyCode": "PEN", "method": "transfer" }
 
 // purchase_order.created { "purchaseOrderId": "guid", "supplierId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "unitCost" } ] }
-// goods.received       { "receiptId": "guid", "purchaseOrderId": "guid | null", "siteId": "guid", "lines": [ { "itemId", "quantity" } ] }
+// goods.received       { "receiptId": "guid", "purchaseOrderId": "guid | null", "siteId": "guid",
+//                        "lines": [ { "itemId", "quantity", "unitCost", "totalCost" } ] }   (costos: WMS desde su fase 1)
 // receipt.cancelled    { "receiptId": "guid", "number": "OC-0001", "purchaseOrderId": "guid | null" }
-// stock.adjusted       { "siteId": "guid", "itemId": "guid", "quantityDelta": -3, "quantityOnHand": 42, "reason": "count | damage | sale | ..." }
+// stock.adjusted       { "siteId": "guid", "itemId": "guid", "quantityDelta": -3, "quantityOnHand": 42, "reason": "count | damage | sale | ...",
+//                        "unitCost": 6.5, "totalCost": -19.5, "saleAmount": 55.5 | null }
+//                        (unitCost/totalCost: costo promedio con que el WMS valorizó el movimiento, en la moneda de la empresa;
+//                         saleAmount: importe de venta en ventas y despachos)
 // stock.transferred    { "transferId": "guid", "fromSiteId": "guid", "toSiteId": "guid", "lines": [ { "itemId", "quantity" } ] }
 // shipment.dispatched  { "shipmentId": "guid", "orderId": "guid", "customerId": "guid", "carrier": "...", "trackingNumber": "..." }
 ```

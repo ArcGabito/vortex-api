@@ -13,6 +13,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   permisos por rol, auditoría y textos en español, inglés y portugués. Se empaqueta con el SDK (`scripts/pack-sdk.sh`,
   CI y Release).
 - `docs/ROADMAP-SUITE.md`: hoja de ruta internacional de la suite.
+- `docs/SISTEMAS.md`: campos aditivos de costo en `stock.adjusted` (`unitCost`, `totalCost`, `saleAmount`) y en las
+  líneas de `goods.received` (`unitCost`, `totalCost`), que publica el WMS desde su fase 1.
 - **Sedes por usuario:** cada miembro de un sistema puede tener sedes asignadas (`siteIds` en
   `PUT …/members/{userId}`). Viajan en la sesión (`Access.SiteIds`, `CanUseSite`) y en el offline token; vacío
   significa todas. Cambiarlas cierra las sesiones del usuario, como el rol. Migración `MemberSites`.
