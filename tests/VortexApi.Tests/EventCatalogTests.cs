@@ -33,6 +33,14 @@ public sealed class EventCatalogTests
         Assert.All(internal_, e => Assert.Equal(["CRM"], e.Consumers));
     }
 
+    [Fact]
+    public void Los_eventos_internos_del_wms_solo_los_usa_el_wms()
+    {
+        var internal_ = Assert.Single(EventCatalog.Entries, e => e.Type.StartsWith("wms.", StringComparison.Ordinal));
+        Assert.Equal("wms.record.upserted", internal_.Type);
+        Assert.Equal(["WMS"], internal_.Consumers);
+    }
+
     /// <summary><c>master.item.created|updated|deleted</c> → los tres tipos.</summary>
     private static IEnumerable<string> Expand(string type)
     {
