@@ -38,8 +38,10 @@ Una librería compartida, **`VortexApi.Suite`** (en este repo, junto al SDK), qu
 Se entrega en dos partes:
 
 - **1a (motor):** impuestos, monedas, regiones, permisos y auditoría en `VortexApi.Suite` e integrados en los cuatro
-  sistemas.
-- **1b (idiomas):** la interfaz de las cuatro apps en español, inglés y portugués, con selector de idioma.
+  sistemas. **Hecho.**
+- **1b (idiomas):** la interfaz de las cuatro apps en español, inglés y portugués, con selector de idioma. **Hecho:**
+  cada app lleva `Texts/{es,en,pt}.json` en Core y una prueba que verifica que estén completos. Pendiente: los
+  mensajes de validación de Core y los documentos para el cliente (PDF y WhatsApp del CRM) siguen en español.
 
 **Terminado cuando:** una empresa de México vende en el POS con IVA 16 %, el ERP factura en dólares a un cliente de
 EE. UU. sin impuesto, un cajero no puede anular una venta, la anulación de un supervisor queda en la auditoría, y la
