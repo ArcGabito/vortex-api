@@ -299,13 +299,17 @@ Catálogo actual (`GET /api/events/catalog`):
 | `sale.completed`, `sale.voided`, `sale.returned` | POS | ERP, WMS (y CRM `sale.completed`) |
 | `quote.accepted`, `deal.won` | CRM | ERP |
 | `order.created` | ERP, CRM (y WMS cuando funciona solo) | WMS, ERP |
+| `order.picking_started` | WMS | WMS (sus otros equipos), ERP, CRM |
+| `order.cancelled` | WMS, ERP, CRM | WMS, ERP, CRM |
 | `invoice.issued` | ERP | CRM, POS |
 | `payment.received` | ERP, POS | CRM, ERP |
 | `purchase_order.created` | ERP | WMS |
 | `goods.received` | WMS | ERP |
+| `receipt.cancelled` | WMS | WMS (sus otros equipos), ERP |
 | `stock.adjusted`, `stock.transferred` | WMS | ERP, POS |
 | `shipment.dispatched` | WMS | ERP, CRM |
 | `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
+| `wms.record.upserted` | WMS | WMS (sus otros equipos) |
 | `master.{party,item,site,company}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 
 ### Contenido de los eventos (versión 1)
@@ -326,6 +330,8 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 
 // order.created        { "orderId": "guid", "number": "PED-0001", "customerId": "guid", "siteId": "guid | null",
 //                        "lines": [ { "itemId", "quantity", "unitPrice" } ], "total": 0, "currencyCode": "PEN" }
+// order.picking_started { "orderId": "guid", "number": "PED-0001" }
+// order.cancelled      { "orderId": "guid", "number": "PED-0001", "reason": "... | null" }
 // quote.accepted       { "quoteId": "guid", "customerId": "guid", "lines": [ ... ], "total": 0, "currencyCode": "PEN" }
 // deal.won             { "dealId": "guid", "customerId": "guid", "amount": 0, "currencyCode": "PEN", "quoteId": "guid | null" }
 
@@ -336,6 +342,7 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 
 // purchase_order.created { "purchaseOrderId": "guid", "supplierId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "unitCost" } ] }
 // goods.received       { "receiptId": "guid", "purchaseOrderId": "guid | null", "siteId": "guid", "lines": [ { "itemId", "quantity" } ] }
+// receipt.cancelled    { "receiptId": "guid", "number": "OC-0001", "purchaseOrderId": "guid | null" }
 // stock.adjusted       { "siteId": "guid", "itemId": "guid", "quantityDelta": -3, "quantityOnHand": 42, "reason": "count | damage | sale | ..." }
 // stock.transferred    { "transferId": "guid", "fromSiteId": "guid", "toSiteId": "guid", "lines": [ { "itemId", "quantity" } ] }
 // shipment.dispatched  { "shipmentId": "guid", "orderId": "guid", "customerId": "guid", "carrier": "...", "trackingNumber": "..." }
