@@ -77,5 +77,5 @@ listas para tiendas (Microsoft Store, Google Play, App Store).
 
 - **Tipos de cambio** como dato maestro (fecha, moneda, tasa), para que ERP, CRM y POS conviertan igual.
 - **Idioma preferido del usuario** en la sesión.
-- **Sedes por usuario** (también en la hoja de ruta del WMS).
+- ~~**Sedes por usuario**~~: hecho (`Access.SiteIds`, 2026-11).
 - **Eventos de cancelación** (`order.cancelled`, `invoice.voided`, `purchase_order.cancelled`) para replicar estados.

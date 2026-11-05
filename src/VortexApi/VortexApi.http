@@ -45,7 +45,7 @@ Content-Type: application/json
   "role": "User"
 }
 
-### 5. Dar acceso al ERP con un rol
+### 5. Dar acceso al ERP con un rol (y, si se quiere, solo en algunas sedes: "siteIds": ["…"])
 PUT {{api}}/api/admin/organizations/{{org.response.body.id}}/products/ERP/members/{{user.response.body.id}}
 Authorization: Bearer {{admin.response.body.accessToken}}
 Content-Type: application/json

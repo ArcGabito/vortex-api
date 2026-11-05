@@ -307,6 +307,40 @@ public sealed class ProductAccessFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Member_sites_travel_in_the_session_and_the_offline_token()
+    {
+        var client = Client("ERP");
+        var session = await client.LoginAsync(Ana, UserPassword, DeviceA);
+        Assert.Empty(session.Access.SiteIds!);
+        Assert.True(session.Access.CanUseSite(Guid.NewGuid()));
+
+        var http = _factory.CreateClient();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+        var central = (await http.PostOkAsync("api/master/sites", new { code = "ALM-01", name = "Central", kind = "Warehouse" }))
+            .GetProperty("id").GetGuid();
+        var other = (await http.PostOkAsync("api/master/sites", new { code = "TDA-01", name = "Tienda" })).GetProperty("id").GetGuid();
+
+        var detail = await _admin.PutOkAsync($"api/admin/organizations/{_orgId}/products/ERP/members/{_userId}",
+            new { role = "contador", siteIds = new[] { central } });
+        Assert.Equal(central, detail.GetProperty("members")[0].GetProperty("siteIds")[0].GetGuid());
+
+        var unknown = await _admin.PutAsJsonAsync($"api/admin/organizations/{_orgId}/products/ERP/members/{_userId}",
+            new { role = "contador", siteIds = new[] { Guid.NewGuid() } });
+        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+
+        // Cambiar las sedes cierra las sesiones: la nueva trae las sedes.
+        var again = await client.LoginAsync(Ana, UserPassword, DeviceA);
+        Assert.Equal([central], again.Access.SiteIds);
+        Assert.True(again.Access.CanUseSite(central));
+        Assert.False(again.Access.CanUseSite(other));
+
+        var offline = await new OfflineAccessValidator(await client.GetSigningKeysAsync(), VortexApiFactory.Issuer)
+            .ValidateAsync(again.OfflineToken, "ERP", DeviceA);
+        Assert.True(offline.IsValid, offline.Error);
+        Assert.Equal([central], offline.Access!.SiteIds);
+    }
+
+    [Fact]
     public async Task Audit_log_records_successful_and_failed_logins()
     {
         var client = Client("ERP");

@@ -39,7 +39,7 @@ public sealed class OrganizationProductsController(
         var access = await FindAsync(orgId, code, includeMembers: true);
         var members = access.Members.OrderBy(m => m.User.Email)
             .Select(m => new MemberDto(m.Id, m.UserId, m.User.Email, m.User.FullName, m.Role, m.AddedAt,
-                m.Devices.OrderByDescending(d => d.LastSeenAt).Select(d => d.ToDto()).ToList()))
+                m.Devices.OrderByDescending(d => d.LastSeenAt).Select(d => d.ToDto()).ToList(), m.SiteIds))
             .ToList();
         return new OrganizationProductDetailDto(access.ToDto(members.Count, clock.GetUtcNow()), members);
     }
@@ -101,6 +101,13 @@ public sealed class OrganizationProductsController(
             throw ApiException.NotFound("Usuario");
 
         var role = string.IsNullOrWhiteSpace(request.Role) ? null : request.Role.Trim().ToLowerInvariant();
+        var siteIds = (request.SiteIds ?? []).Where(s => s != Guid.Empty).Distinct().Order().ToList();
+        if (siteIds.Count > 0)
+        {
+            var known = await db.Sites.CountAsync(s => s.OrganizationId == orgId && s.DeletedAt == null && siteIds.Contains(s.Id));
+            if (known != siteIds.Count)
+                throw ApiException.BadRequest(ErrorCodes.Validation, "Una de las sedes no existe en la organización.");
+        }
         var member = access.Members.SingleOrDefault(m => m.UserId == userId);
         if (member is null)
         {
@@ -108,19 +115,20 @@ public sealed class OrganizationProductsController(
                 throw ApiException.Conflict(ErrorCodes.UserLimitReached,
                     $"{access.Product.Name} alcanzó su máximo de {max} usuario(s).");
 
-            member = new ProductMember { UserId = userId, Role = role, AddedAt = clock.GetUtcNow() };
+            member = new ProductMember { UserId = userId, Role = role, SiteIds = siteIds, AddedAt = clock.GetUtcNow() };
             access.Members.Add(member);
             audit.Record(AuditActions.MemberAdded, true, User.UserId(), orgId, access.Product.Code, member.Id.ToString(),
-                $"{user.Email} ({role ?? "sin rol"})");
+                $"{user.Email} ({role ?? "sin rol"}; sedes: {(siteIds.Count == 0 ? "todas" : siteIds.Count.ToString())})");
         }
-        else if (member.Role != role)
+        else if (member.Role != role || !member.SiteIds.Order().SequenceEqual(siteIds))
         {
             member.Role = role;
-            // El rol viaja en el token: cerrar las sesiones del usuario en este sistema para que tome el nuevo.
+            member.SiteIds = siteIds;
+            // El rol y las sedes viajan en el token: cerrar las sesiones del usuario en este sistema para que tome los nuevos.
             foreach (var device in member.Devices)
                 await auth.RevokeDeviceSessionsAsync(device.Id);
             audit.Record(AuditActions.MemberUpdated, true, User.UserId(), orgId, access.Product.Code, member.Id.ToString(),
-                $"{user.Email} ({role ?? "sin rol"})");
+                $"{user.Email} ({role ?? "sin rol"}; sedes: {(siteIds.Count == 0 ? "todas" : siteIds.Count.ToString())})");
         }
 
         await db.SaveChangesAsync();

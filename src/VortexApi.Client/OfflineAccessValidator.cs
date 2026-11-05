@@ -14,9 +14,13 @@ public sealed record OfflineAccess(
     string? Role,
     IReadOnlyList<string> Features,
     DateTimeOffset? AccessExpiresAt,
-    DateTimeOffset ValidUntil)
+    DateTimeOffset ValidUntil,
+    IReadOnlyList<Guid>? SiteIds = null)
 {
     public bool HasFeature(string feature) => Features.Contains(feature, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Sedes asignadas al usuario en este sistema. Vacío: puede trabajar en todas.</summary>
+    public bool CanUseSite(Guid siteId) => SiteIds is not { Count: > 0 } || SiteIds.Contains(siteId);
 }
 
 public sealed record OfflineValidationResult(bool IsValid, OfflineAccess? Access, string? Error);
@@ -70,7 +74,8 @@ public sealed class OfflineAccessValidator(string jwksJson, string issuer)
             Get("prd_role"),
             claims.FindAll("feat").Select(c => c.Value).ToList(),
             Get("acc_exp") is { } exp ? DateTimeOffset.FromUnixTimeSeconds(long.Parse(exp)) : null,
-            new DateTimeOffset(token.ValidTo, TimeSpan.Zero));
+            new DateTimeOffset(token.ValidTo, TimeSpan.Zero),
+            claims.FindAll("prd_sites").Select(c => Guid.TryParse(c.Value, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty).ToList());
         return new(true, access, null);
     }
 }

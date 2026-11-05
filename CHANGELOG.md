@@ -13,6 +13,9 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   permisos por rol, auditoría y textos en español, inglés y portugués. Se empaqueta con el SDK (`scripts/pack-sdk.sh`,
   CI y Release).
 - `docs/ROADMAP-SUITE.md`: hoja de ruta internacional de la suite.
+- **Sedes por usuario:** cada miembro de un sistema puede tener sedes asignadas (`siteIds` en
+  `PUT …/members/{userId}`). Viajan en la sesión (`Access.SiteIds`, `CanUseSite`) y en el offline token; vacío
+  significa todas. Cambiarlas cierra las sesiones del usuario, como el rol. Migración `MemberSites`.
 - Catálogo de eventos: `order.picking_started`, `order.cancelled` y `receipt.cancelled` (estados de pedidos y
   recepciones entre sistemas y equipos) y `wms.record.upserted` (replicación de los datos propios del WMS).
 - Catálogo de eventos: `crm.record.upserted` y `crm.record.deleted` (replicación de los datos propios del CRM

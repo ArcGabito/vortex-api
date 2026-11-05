@@ -54,7 +54,8 @@ Al arrancar en `Development` aplica las migraciones y crea todo lo necesario par
 Cualquiera de los dos usuarios demo puede iniciar sesión en los 4 sistemas sin configurar nada más.
 Para probar roles por sistema (p. ej. `cajero` en POS), asígnalo con
 `PUT /api/admin/organizations/{orgId}/products/POS/members/{userId}` usando el token de Ana
-(`POST /api/admin/auth/login`). `src/VortexApi/VortexApi.http` tiene ejemplos de todas las llamadas.
+(`POST /api/admin/auth/login`), con cuerpo `{ "role": "cajero", "siteIds": ["…"] }`. `siteIds` son las sedes en las
+que trabaja el usuario en ese sistema; vacío o ausente, todas. `src/VortexApi/VortexApi.http` tiene ejemplos de todas las llamadas.
 
 Para empezar de cero: `docker compose down -v` y volver a arrancar.
 
@@ -180,6 +181,7 @@ var session = await sessions.LoginAsync(email, password, DeviceInfo.Name, Device
 var org = session.Access.OrganizationName;
 var rol = session.Access.Role;                      // rol propio del sistema (p. ej. "cajero"), puede ser null
 var conFacturacion = session.Access.HasFeature("facturacion");
+var puedeOperar = session.Access.CanUseSite(sedeId);  // sedes asignadas (Access.SiteIds); vacío = todas
 
 // Al abrir la app: ¿hay sesión guardada?
 if (await sessions.GetSessionAsync() is null) { /* mostrar login */ }

@@ -111,6 +111,12 @@ public class ProductMember
     /// <summary>Rol dentro del sistema (p. ej. <c>cajero</c> en POS). Lo interpreta cada sistema.</summary>
     public string? Role { get; set; }
 
+    /// <summary>
+    /// Sedes en las que trabaja el usuario dentro de este sistema (p. ej. el operario del almacén central). Vacío: todas.
+    /// Lo aplica cada sistema (el WMS solo muestra y opera esas sedes).
+    /// </summary>
+    public List<Guid> SiteIds { get; set; } = [];
+
     public DateTimeOffset AddedAt { get; set; }
 
     public List<Device> Devices { get; set; } = [];
