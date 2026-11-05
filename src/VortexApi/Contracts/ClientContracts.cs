@@ -30,7 +30,8 @@ public sealed record ProductAccessInfo(
     string? Role,
     IReadOnlyList<string> Features,
     DateTimeOffset? ExpiresAt,
-    Guid DeviceId);
+    Guid DeviceId,
+    IReadOnlyList<Guid> SiteIds);
 
 public sealed record ProductSessionResponse(
     string AccessToken,

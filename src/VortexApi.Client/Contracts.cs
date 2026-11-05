@@ -11,9 +11,13 @@ public sealed record VortexAccess(
     string? Role,
     IReadOnlyList<string> Features,
     DateTimeOffset? ExpiresAt,
-    Guid DeviceId)
+    Guid DeviceId,
+    IReadOnlyList<Guid>? SiteIds = null)
 {
     public bool HasFeature(string feature) => Features.Contains(feature, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Sedes asignadas al usuario en este sistema. Vacío: puede trabajar en todas.</summary>
+    public bool CanUseSite(Guid siteId) => SiteIds is not { Count: > 0 } || SiteIds.Contains(siteId);
 }
 
 /// <summary>Sesión devuelta por login/refresh. El sistema debe guardar RefreshToken y OfflineToken en almacenamiento seguro.</summary>

@@ -66,7 +66,8 @@ public sealed record OrganizationProductRequest(
     List<string>? Features = null,
     DateTimeOffset? ExpiresAt = null);
 
-public sealed record MemberRequest([MaxLength(50)] string? Role);
+/// <param name="SiteIds">Sedes en las que trabaja el usuario en este sistema; vacío o null: todas.</param>
+public sealed record MemberRequest([MaxLength(50)] string? Role, [MaxLength(200)] List<Guid>? SiteIds = null);
 
 public sealed record OrganizationProductDto(
     Guid Id, Guid OrganizationId, string ProductCode, string ProductName, bool IsEnabled, string? DisabledReason,
@@ -74,7 +75,7 @@ public sealed record OrganizationProductDto(
     IReadOnlyList<string> Features, DateTimeOffset? ExpiresAt, bool IsUsableNow);
 
 public sealed record MemberDto(Guid MemberId, Guid UserId, string Email, string FullName, string? Role,
-    DateTimeOffset AddedAt, IReadOnlyList<DeviceDto> Devices);
+    DateTimeOffset AddedAt, IReadOnlyList<DeviceDto> Devices, IReadOnlyList<Guid> SiteIds);
 
 public sealed record DeviceDto(Guid Id, string? DeviceName, string? Platform, DateTimeOffset ActivatedAt,
     DateTimeOffset LastSeenAt, string? LastIp, bool IsRevoked);

@@ -451,7 +451,7 @@ public sealed class AuthService(
     private static ProductAccessInfo ToAccessInfo(ProductMember m, Device d)
     {
         var p = m.OrganizationProduct;
-        return new(p.Id, p.Product.Code, p.OrganizationId, p.Organization.Name, m.Role, p.Features, p.ExpiresAt, d.Id);
+        return new(p.Id, p.Product.Code, p.OrganizationId, p.Organization.Name, m.Role, p.Features, p.ExpiresAt, d.Id, m.SiteIds);
     }
 
     private static ApiException Forbidden(string code, string message) => new(StatusCodes.Status403Forbidden, code, message);

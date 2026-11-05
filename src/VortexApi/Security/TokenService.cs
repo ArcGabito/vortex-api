@@ -30,6 +30,7 @@ public sealed class TokenService(SigningKeyProvider keys, IOptions<JwtOptions> o
         claims.Add(new(VortexClaims.Device, device.Id.ToString()));
         if (member.Role is not null)
             claims.Add(new(VortexClaims.ProductRole, member.Role));
+        claims.AddRange(member.SiteIds.Select(s => new Claim(VortexClaims.Sites, s.ToString())));
         claims.AddRange(access.Features.Select(f => new Claim(VortexClaims.Features, f)));
 
         var expires = Cap(clock.GetUtcNow().AddMinutes(_options.AccessTokenMinutes), access.ExpiresAt);
@@ -54,6 +55,7 @@ public sealed class TokenService(SigningKeyProvider keys, IOptions<JwtOptions> o
         };
         if (member.Role is not null)
             claims.Add(new(VortexClaims.ProductRole, member.Role));
+        claims.AddRange(member.SiteIds.Select(s => new Claim(VortexClaims.Sites, s.ToString())));
         if (access.ExpiresAt is { } accessExpires)
             claims.Add(new(VortexClaims.AccessExpires, accessExpires.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64));
         claims.AddRange(access.Features.Select(f => new Claim(VortexClaims.Features, f)));

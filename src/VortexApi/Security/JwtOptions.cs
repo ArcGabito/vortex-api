@@ -40,6 +40,7 @@ public static class VortexClaims
     public const string OrganizationName = "org_name";
     public const string Product = "prd";
     public const string ProductRole = "prd_role";
+    public const string Sites = "prd_sites";
     public const string Access = "acc";
     public const string AccessExpires = "acc_exp";
     public const string Features = "feat";
