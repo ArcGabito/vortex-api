@@ -351,11 +351,14 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 // purchase_order.created { "purchaseOrderId": "guid", "supplierId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "unitCost" } ] }
 // goods.received       { "receiptId": "guid", "purchaseOrderId": "guid | null", "siteId": "guid",
 //                        "lines": [ { "itemId", "quantity", "unitCost", "totalCost" } ] }   (costos: WMS desde su fase 1)
+//                        (WMS fase 3: cada línea puede llevar "lots": [ { "lotCode", "quantity", "expiresAt" } ] y "serials": [ "..." ])
 // receipt.cancelled    { "receiptId": "guid", "number": "OC-0001", "purchaseOrderId": "guid | null" }
 // stock.adjusted       { "siteId": "guid", "itemId": "guid", "quantityDelta": -3, "quantityOnHand": 42, "reason": "count | damage | sale | ...",
 //                        "unitCost": 6.5, "totalCost": -19.5, "saleAmount": 55.5 | null }
 //                        (unitCost/totalCost: costo promedio con que el WMS valorizó el movimiento, en la moneda de la empresa;
 //                         saleAmount: importe de venta en ventas y despachos)
+//                        (WMS fase 3: "lots": [ { "lotCode", "quantity" (con el signo del movimiento), "expiresAt" } ] y "serials";
+//                         lotCode "" = salió sin lote)
 // stock.transferred    { "transferId": "guid", "fromSiteId": "guid", "toSiteId": "guid", "lines": [ { "itemId", "quantity" } ] }
 // shipment.dispatched  { "shipmentId": "guid", "orderId": "guid", "customerId": "guid", "carrier": "...", "trackingNumber": "..." }
 ```

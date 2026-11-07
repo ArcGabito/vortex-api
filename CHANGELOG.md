@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- `docs/SISTEMAS.md`: lotes y series en `stock.adjusted`, `goods.received`, `stock.transferred` y
+  `shipment.dispatched` (campos aditivos que publica Vortex WMS desde su fase 3).
 - Eventos `credit_note.issued`, `debit_note.issued` e `invoice.voided` en el catálogo: notas vinculadas a un comprobante
   y anulación de comprobantes, que publica Vortex ERP (por ahora los consumen sus otros equipos).
 - Evento `pos.record.upserted` en el catálogo: replicación interna del POS entre las cajas de una organización
