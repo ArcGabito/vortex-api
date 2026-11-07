@@ -121,7 +121,9 @@ resolver cada uno lo mismo de forma distinta. Ver [ROADMAP-SUITE.md](ROADMAP-SUI
   anteriores (`igv`, `exonerado`, `inafecto`) siguen valiendo. La tasa general que configura el OrgAdmin en el hub manda.
 - **Monedas:** `Currencies.Get(code)` con decimales y símbolo; todo importe se redondea con la moneda del documento.
 - **Regiones e idiomas:** `RegionalSettings.CultureFor(idioma, país)`, hora de la empresa con `company.timeZone`, y
-  `TextCatalog` para los textos en español, inglés y portugués.
+  `TextCatalog` para los textos en español, inglés y portugués. El idioma de la app sale de `session.User.Language`
+  (si es null, `Languages.DefaultFor(company.CountryCode)`); cuando el usuario lo cambia en la app, guardarlo con
+  `SetLanguageAsync` para que lo vea igual en todos los sistemas y equipos.
 - **Permisos:** cada sistema declara su `PermissionMatrix` (roles en minúsculas, como se asignan en
   `PUT /api/admin/organizations/{orgId}/products/{code}/members/{userId}`). OrgAdmin y PlatformAdmin pueden todo.
   Se validan en los servicios de Core, no solo en la interfaz.
