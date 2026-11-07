@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Eventos `credit_note.issued`, `debit_note.issued` e `invoice.voided` en el catálogo: notas vinculadas a un comprobante
+  y anulación de comprobantes, que publica Vortex ERP (por ahora los consumen sus otros equipos).
 - Evento `pos.record.upserted` en el catálogo: replicación interna del POS entre las cajas de una organización
   (configuración de cada tienda), como `crm.record.*` y `wms.record.upserted`.
 - **Idioma preferido del usuario** (`es`, `en`, `pt`): viaja en la sesión (`User.Language`), el usuario lo cambia con
