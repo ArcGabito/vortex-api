@@ -78,6 +78,20 @@ public sealed record SiteRequest(
 public sealed record SiteDto(
     Guid Id, string Code, string Name, SiteKind Kind, string? Phone, AddressDto? Address, bool IsActive, MasterMeta Meta);
 
+/// <param name="Rate">1 <c>FromCurrency</c> = <c>Rate</c> <c>ToCurrency</c>.</param>
+public sealed record ExchangeRateRequest(
+    DateOnly Date,
+    [Required, StringLength(3, MinimumLength = 3)] string FromCurrency,
+    [Required, StringLength(3, MinimumLength = 3)] string ToCurrency,
+    [Range(0.0000001, 1_000_000_000)] decimal Rate,
+    [Range(0.0000001, 1_000_000_000)] decimal? BuyRate = null,
+    [Range(0.0000001, 1_000_000_000)] decimal? SellRate = null,
+    [MaxLength(20)] string? Source = null);
+
+public sealed record ExchangeRateDto(
+    Guid Id, DateOnly Date, string FromCurrency, string ToCurrency, decimal Rate, decimal? BuyRate, decimal? SellRate,
+    string? Source, MasterMeta Meta);
+
 public sealed record CompanyProfileRequest(
     [Required, MaxLength(200)] string LegalName,
     [MaxLength(200)] string? TradeName = null,

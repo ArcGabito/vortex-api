@@ -217,9 +217,10 @@ los guarda referenciando el `UserId` del hub.
 |---|---|---|
 | Usuarios, roles, equipos, sistemas habilitados | Hub | Solo a través de la sesión. |
 | Clientes y proveedores (`party`) | Hub | Copia local sincronizada; altas y cambios con `VortexSync`. |
-| Artículos (`item`) | Hub | Ídem. El **stock no** es del hub. |
+| Artículos (`item`) | Hub | Ídem. El **stock no** es del hub. Incluye presentaciones (caja × 12) con su código de barras, código de unidad UN/ECE, peso y control lote/serie; `?barcode=` busca en todos los códigos y `VortexItem.PresentationFor(barcode)` dice cuál se escaneó. |
 | Sedes, tiendas, almacenes (`site`) | Hub | Ídem. |
 | Datos de la empresa (`company`) | Hub | Solo lectura (lo edita el OrgAdmin). |
+| Tipos de cambio (`exchange_rate`) | Hub | Uno por par de monedas y día (`/api/master/exchange-rates`), con compra y venta opcionales. Copia local con `OnExchangeRates`; el vigente en una fecha es el de ese día o el último anterior (`GET …/latest?from=USD&to=PEN&date=`, `GetExchangeRateAsync`). `VortexExchangeRate.Convert` y `ConvertBack` convierten; redondear con `Currencies`. Lo carga el ERP o el OrgAdmin. |
 | Ventas, facturas, stock, pedidos, oportunidades, asientos… | **El sistema** | En su propia base. Lo que otros sistemas necesitan saber se publica como **evento**. |
 
 Reglas:
@@ -229,7 +230,7 @@ Reglas:
    sincronización, aunque ahora no haya red.
 2. **Referenciar siempre por el Id del hub** (`customerId`, `itemId`, `siteId`), nunca por un Id local
    autoincremental. Así, si la empresa reemplaza el CRM por el ERP, las referencias siguen siendo válidas.
-3. **La copia local se actualiza desde el feed** (`OnParties`, `OnItems`, `OnSites`, `OnCompany`), no al
+3. **La copia local se actualiza desde el feed** (`OnParties`, `OnItems`, `OnSites`, `OnCompany`, `OnExchangeRates`), no al
    responder una escritura. Los handlers aplican por Id y versión y deben ser idempotentes.
 4. **Validaciones del hub**: RUC de 11 dígitos, DNI de 8; documento, SKU y código de sede únicos por
    organización. Antes de crear un cliente, buscarlo: `GET /api/master/parties?documentNumber=…`.
@@ -312,7 +313,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `shipment.dispatched` | WMS | ERP, CRM |
 | `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
 | `wms.record.upserted` | WMS | WMS (sus otros equipos) |
-| `master.{party,item,site,company}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
+| `master.{party,item,site,company,exchange_rate}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 
 ### Contenido de los eventos (versión 1)
 

@@ -83,6 +83,8 @@ public sealed class VortexSync(
     public VortexSync OnParties(Func<VortexMasterChange<VortexParty>, CancellationToken, Task> handler) => Typed("party", handler);
     public VortexSync OnItems(Func<VortexMasterChange<VortexItem>, CancellationToken, Task> handler) => Typed("item", handler);
     public VortexSync OnSites(Func<VortexMasterChange<VortexSite>, CancellationToken, Task> handler) => Typed("site", handler);
+    public VortexSync OnExchangeRates(Func<VortexMasterChange<VortexExchangeRate>, CancellationToken, Task> handler) =>
+        Typed("exchange_rate", handler);
     public VortexSync OnCompany(Func<VortexMasterChange<VortexCompany>, CancellationToken, Task> handler) => Typed("company", handler);
 
     /// <param name="pattern">Tipo exacto (<c>sale.completed</c>), prefijo (<c>sale.*</c>) o <c>*</c>.</param>

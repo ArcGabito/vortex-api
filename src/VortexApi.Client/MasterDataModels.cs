@@ -36,6 +36,35 @@ public sealed record VortexItemPresentation(string Code, string Name, decimal Fa
 public sealed record VortexSite(
     Guid Id, string Code, string Name, string Kind, string? Phone, VortexAddress? Address, bool IsActive, VortexMasterMeta Meta);
 
+/// <summary>Tipo de cambio de un día: 1 <c>FromCurrency</c> = <c>Rate</c> <c>ToCurrency</c>.</summary>
+public sealed record VortexExchangeRate(
+    Guid Id, DateOnly Date, string FromCurrency, string ToCurrency, decimal Rate, decimal? BuyRate, decimal? SellRate,
+    string? Source, VortexMasterMeta Meta)
+{
+    /// <summary>
+    /// Convierte un monto de <c>FromCurrency</c> a <c>ToCurrency</c> (sin redondear: redondee con
+    /// <c>VortexApi.Suite.Money.Currencies</c> según la moneda destino). Use <paramref name="side"/> para compra o venta.
+    /// </summary>
+    public decimal Convert(decimal amount, VortexRateSide side = VortexRateSide.Reference) => amount * RateFor(side);
+
+    /// <summary>Convierte de <c>ToCurrency</c> a <c>FromCurrency</c>.</summary>
+    public decimal ConvertBack(decimal amount, VortexRateSide side = VortexRateSide.Reference) => amount / RateFor(side);
+
+    public decimal RateFor(VortexRateSide side) => side switch
+    {
+        VortexRateSide.Buy => BuyRate ?? Rate,
+        VortexRateSide.Sell => SellRate ?? Rate,
+        _ => Rate,
+    };
+}
+
+public enum VortexRateSide
+{
+    Reference,
+    Buy,
+    Sell,
+}
+
 public sealed record VortexCompany(
     Guid OrganizationId, string LegalName, string? TradeName, string? TaxId, string CountryCode, string CurrencyCode,
     string TimeZone, decimal DefaultTaxRate, string? Email, string? Phone, VortexAddress? Address, VortexMasterMeta Meta);
@@ -82,13 +111,15 @@ public static class VortexMasterResource
     public const string Parties = "parties";
     public const string Items = "items";
     public const string Sites = "sites";
+    public const string ExchangeRates = "exchange-rates";
 
-    /// <summary>Tipo de entidad en el feed (<c>party</c>, <c>item</c>, <c>site</c>) para una ruta.</summary>
+    /// <summary>Tipo de entidad en el feed (<c>party</c>, <c>item</c>, <c>site</c>, <c>exchange_rate</c>) para una ruta.</summary>
     public static string EntityTypeOf(string resource) => resource switch
     {
         Parties => "party",
         Items => "item",
         Sites => "site",
+        ExchangeRates => "exchange_rate",
         _ => throw new ArgumentException($"Recurso desconocido: {resource}", nameof(resource)),
     };
 }

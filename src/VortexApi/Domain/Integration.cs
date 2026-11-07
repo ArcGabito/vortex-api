@@ -143,5 +143,6 @@ public static class EventCatalog
         new("master.item.created|updated|deleted", "Cambio en artículos (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),
         new("master.site.created|updated|deleted", "Cambio en sedes/almacenes (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),
         new("master.company.created|updated", "Cambio en los datos de la empresa.", ["HUB"], ["ERP", "CRM", "WMS", "POS"]),
+        new("master.exchange_rate.created|updated|deleted", "Tipo de cambio del día (datos maestros).", ["HUB"], ["ERP", "CRM", "POS"]),
     ];
 }

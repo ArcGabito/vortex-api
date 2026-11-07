@@ -96,6 +96,25 @@ public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions opti
         await SendAsync<object>(request, ct);
     }
 
+    /// <summary>
+    /// Tipo de cambio vigente en <paramref name="date"/> (el de ese día o el último anterior); sin fecha, el más reciente.
+    /// Devuelve null si no hay ninguno. Sin conexión, use la copia local que llega por <c>OnExchangeRates</c>.
+    /// </summary>
+    public async Task<VortexExchangeRate?> GetExchangeRateAsync(string accessToken, string from, string to, DateOnly? date = null,
+        CancellationToken ct = default)
+    {
+        var query = $"api/master/exchange-rates/latest?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}" +
+                    (date is { } d ? $"&date={d:yyyy-MM-dd}" : "");
+        try
+        {
+            return await SendAsync<VortexExchangeRate>(Authorized(HttpMethod.Get, query, accessToken), ct);
+        }
+        catch (VortexApiException ex) when (ex.StatusCode == 404)
+        {
+            return null;
+        }
+    }
+
     // ---------- Eventos ----------
 
     public Task<VortexEventPage> GetEventsAsync(string accessToken, long since, IEnumerable<string>? types = null,
