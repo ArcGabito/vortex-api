@@ -59,6 +59,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.NormalizedEmail).HasMaxLength(256);
             e.Property(x => x.FullName).HasMaxLength(200);
+            e.Property(x => x.Language).HasMaxLength(10);
             e.Property(x => x.PasswordHash).HasMaxLength(256);
             e.Property(x => x.SecurityStamp).HasMaxLength(64);
             e.HasIndex(x => x.NormalizedEmail).IsUnique();

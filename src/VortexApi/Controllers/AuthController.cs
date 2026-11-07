@@ -43,6 +43,14 @@ public sealed class AuthController(AuthService auth) : ControllerBase
         return NoContent();
     }
 
+/// <summary>
+    /// Preferencias del usuario autenticado (hoy, el idioma). No cierra sesiones: el idioma nuevo llega en el próximo
+    /// login o refresh, y la app que lo cambió ya lo está usando.
+    /// </summary>
+    [HttpPut("me/preferences")]
+    [Authorize]
+    public Task<UserInfo> Preferences(PreferencesRequest request) => auth.SetPreferencesAsync(User.UserId(), request);
+
     /// <summary>Cambia la contraseña del usuario autenticado y cierra todas sus sesiones.</summary>
     [HttpPost("change-password")]
     [Authorize]

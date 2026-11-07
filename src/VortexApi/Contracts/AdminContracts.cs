@@ -40,18 +40,20 @@ public sealed record CreateUserRequest(
     [Required, EmailAddress, MaxLength(256)] string Email,
     [Required, MaxLength(200)] string FullName,
     [Required, MinLength(10), MaxLength(256)] string Password,
-    UserRole Role = UserRole.User);
+    UserRole Role = UserRole.User,
+    [MaxLength(10)] string? Language = null);
 
 public sealed record UpdateUserRequest(
     [Required, MaxLength(200)] string FullName,
     UserRole Role,
-    bool IsActive);
+    bool IsActive,
+    [MaxLength(10)] string? Language = null);
 
 public sealed record ResetPasswordRequest([Required, MinLength(10), MaxLength(256)] string NewPassword);
 
 public sealed record UserDto(
     Guid Id, Guid? OrganizationId, string Email, string FullName, string Role, bool IsActive,
-    bool IsLockedOut, DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt);
+    bool IsLockedOut, DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt, string? Language);
 
 // Sistemas habilitados por organización
 

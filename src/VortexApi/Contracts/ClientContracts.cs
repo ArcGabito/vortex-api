@@ -51,4 +51,7 @@ public sealed record HeartbeatResponse(
 /// <summary>Sistema de la suite al que el usuario puede entrar (para un selector de sistemas).</summary>
 public sealed record AvailableProduct(string Code, string Name, string? Role, IReadOnlyList<string> Features);
 
-public sealed record UserInfo(Guid Id, string Email, string FullName, string Role, Guid? OrganizationId);
+public sealed record UserInfo(Guid Id, string Email, string FullName, string Role, Guid? OrganizationId, string? Language);
+
+/// <param name="Language"><c>es</c>, <c>en</c> o <c>pt</c>; vacío vuelve al idioma del país de la empresa.</param>
+public sealed record PreferencesRequest([MaxLength(10)] string? Language);

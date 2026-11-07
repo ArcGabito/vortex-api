@@ -8,6 +8,9 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Idioma preferido del usuario** (`es`, `en`, `pt`): viaja en la sesión (`User.Language`), el usuario lo cambia con
+  `PUT /api/auth/me/preferences` (SDK `SetLanguageAsync`, sin cerrar sesión) y el administrador al crear o editar
+  el usuario. Null = el idioma del país de la empresa. Migración `UserLanguage`.
 - **Tipos de cambio** como dato maestro (`exchange_rate`): uno por par de monedas y día, con compra, venta y
   fuente. `GET /api/master/exchange-rates/latest` da el vigente en una fecha (o el último anterior); llega a los
   sistemas por el feed (`OnExchangeRates`) y el SDK suma `GetExchangeRateAsync` y `VortexExchangeRate.Convert`.

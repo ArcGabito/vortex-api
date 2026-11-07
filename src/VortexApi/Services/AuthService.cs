@@ -229,6 +229,14 @@ public sealed class AuthService(
         await db.SaveChangesAsync();
     }
 
+    public async Task<UserInfo> SetPreferencesAsync(Guid userId, PreferencesRequest req)
+    {
+        var user = await db.Users.SingleAsync(u => u.Id == userId);
+        user.Language = UserLanguages.Parse(req.Language);
+        await db.SaveChangesAsync();
+        return ToUserInfo(user);
+    }
+
     /// <summary>Cambia la contraseña, invalida los access tokens (security stamp) y cierra todas las sesiones.</summary>
     public async Task SetPasswordAsync(User user, string newPassword)
     {
@@ -446,7 +454,7 @@ public sealed class AuthService(
         return new AdminSessionResponse(access.Token, access.ExpiresAt, plain, refresh.ExpiresAt, ToUserInfo(user));
     }
 
-    public static UserInfo ToUserInfo(User u) => new(u.Id, u.Email, u.FullName, u.Role.ToString(), u.OrganizationId);
+    public static UserInfo ToUserInfo(User u) => new(u.Id, u.Email, u.FullName, u.Role.ToString(), u.OrganizationId, u.Language);
 
     private static ProductAccessInfo ToAccessInfo(ProductMember m, Device d)
     {

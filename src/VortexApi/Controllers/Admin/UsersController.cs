@@ -74,6 +74,7 @@ public sealed class UsersController(
             FullName = request.FullName.Trim(),
             PasswordHash = hasher.Hash(request.Password),
             Role = request.Role,
+            Language = UserLanguages.Parse(request.Language),
             CreatedAt = clock.GetUtcNow(),
         };
         db.Users.Add(user);
@@ -98,6 +99,8 @@ public sealed class UsersController(
         user.FullName = request.FullName.Trim();
         user.Role = request.Role;
         user.IsActive = request.IsActive;
+        if (request.Language is not null)
+            user.Language = UserLanguages.Parse(request.Language);
         if (invalidate)
             await auth.InvalidateUserSessionsAsync(user);
 

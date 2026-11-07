@@ -32,6 +32,24 @@ public class Organization
     public List<OrganizationProduct> Products { get; set; } = [];
 }
 
+/// <summary>Idiomas de la interfaz de la suite (los mismos de <c>VortexApi.Suite.Regional.Languages</c>).</summary>
+public static class UserLanguages
+{
+    public static readonly string[] Supported = ["es", "en", "pt"];
+
+    /// <summary>Normaliza (<c>pt-BR</c> → <c>pt</c>); vacío = null; un idioma no soportado es un error de validación.</summary>
+    public static string? Parse(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        var code = value.Trim()[..Math.Min(2, value.Trim().Length)].ToLowerInvariant();
+        return Supported.Contains(code)
+            ? code
+            : throw Infrastructure.ApiException.BadRequest(Infrastructure.ErrorCodes.Validation,
+                $"Idioma no soportado: {value}. Usa {string.Join(", ", Supported)}.");
+    }
+}
+
 public class User
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -46,6 +64,9 @@ public class User
     public required string PasswordHash { get; set; }
     public UserRole Role { get; set; } = UserRole.User;
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Idioma preferido (<c>es</c>, <c>en</c>, <c>pt</c>); null = el del país de la empresa. Viaja en la sesión.</summary>
+    public string? Language { get; set; }
 
     public int FailedLoginCount { get; set; }
     public DateTimeOffset? LockoutEnd { get; set; }
