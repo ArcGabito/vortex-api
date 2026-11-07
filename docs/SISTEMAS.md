@@ -308,6 +308,8 @@ Catálogo actual (`GET /api/events/catalog`):
 | `order.cancelled` | WMS, ERP, CRM | WMS, ERP, CRM |
 | `invoice.issued` | ERP | CRM, POS |
 | `payment.received` | ERP, POS | CRM, ERP |
+| `credit_note.issued`, `debit_note.issued` | ERP | ERP (sus otros equipos) |
+| `invoice.voided` | ERP | ERP (sus otros equipos) |
 | `purchase_order.created` | ERP | WMS |
 | `goods.received` | WMS | ERP |
 | `receipt.cancelled` | WMS | WMS (sus otros equipos), ERP |
