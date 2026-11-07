@@ -108,6 +108,43 @@ public sealed class MasterDataTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Item_presentations_are_found_by_any_barcode_and_reach_the_SDK()
+    {
+        var item = await _erp.PostOkAsync("api/master/items", new
+        {
+            sku = "agua-625", name = "Agua 625 ml", barcode = "7750000000017", unitCode = "niu", weightKg = 0.65m,
+            tracking = "Lot",
+            presentations = new[]
+            {
+                new { code = "pack6", name = "Paquete × 6", factor = 6m, barcode = "17750000000014", unitCode = "pk" },
+                new { code = "caja", name = "Caja × 24", factor = 24m, barcode = "27750000000011", unitCode = "box" },
+            },
+        });
+        Assert.Equal("NIU", item.GetProperty("unitCode").GetString());
+        Assert.Equal("Lot", item.GetProperty("tracking").GetString());
+        Assert.Equal("PACK6", item.GetProperty("presentations")[0].GetProperty("code").GetString());
+
+        // El escáner del WMS lee la caja: el hub devuelve el artículo y el SDK reconoce la presentación.
+        var page = await (await _pos.GetAsync("api/master/items?barcode=27750000000011")).ReadJsonAsync();
+        var found = Assert.Single(page.GetProperty("items").Deserialize<List<VortexItem>>(VortexJson.Options)!);
+        Assert.Equal(item.GetProperty("id").GetGuid(), found.Id);
+        Assert.Equal(24m, found.PresentationFor("27750000000011")!.Factor);
+        Assert.Null(found.PresentationFor("7750000000017"));
+        Assert.Equal("Lot", found.Tracking);
+
+        // Un servicio no lleva inventario, así que tampoco lote ni serie.
+        var service = await _erp.PostOkAsync("api/master/items", new { sku = "flete", name = "Flete", kind = "Service", trackInventory = false, tracking = "Serial" });
+        Assert.Equal("None", service.GetProperty("tracking").GetString());
+
+        var repeated = await _erp.PostAsJsonAsync("api/master/items", new
+        {
+            sku = "x-2", name = "X", barcode = "111",
+            presentations = new[] { new { code = "caja", name = "Caja", factor = 12m, barcode = "111" } },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, repeated.StatusCode);
+    }
+
+    [Fact]
     public async Task Delete_is_logical_reported_in_feed_and_can_be_restored()
     {
         var site = await _erp.PostOkAsync("api/master/sites", new { code = "ALM-01", name = "Almacén central", kind = "Warehouse" });

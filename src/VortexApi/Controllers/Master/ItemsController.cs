@@ -27,7 +27,10 @@ public sealed class ItemsController(VortexDbContext db, MasterDataWriter writer)
         if (!string.IsNullOrWhiteSpace(sku))
             query = query.Where(i => i.Sku == sku.Trim().ToUpperInvariant());
         if (!string.IsNullOrWhiteSpace(barcode))
-            query = query.Where(i => i.Barcode == barcode.Trim());
+        {
+            var code = barcode.Trim();
+            query = query.Where(i => i.Barcode == code || i.Presentations.Any(p => p.Barcode == code));
+        }
         if (!string.IsNullOrWhiteSpace(category))
             query = query.Where(i => i.Category == category.Trim());
         return query.OrderBy(i => i.Sku).ToPageAsync(page, pageSize, ToDto);
@@ -48,6 +51,18 @@ public sealed class ItemsController(VortexDbContext db, MasterDataWriter writer)
         i.IsActive = r.IsActive;
         if (Clean(r.CurrencyCode) is { } currency)
             i.CurrencyCode = currency.ToUpperInvariant();
+        i.UnitCode = Clean(r.UnitCode)?.ToUpperInvariant();
+        i.WeightKg = r.WeightKg is { } w ? decimal.Round(w, 4) : null;
+        // Lote y serie solo tienen sentido si el artículo lleva inventario.
+        i.Tracking = i.TrackInventory ? r.Tracking : ItemTracking.None;
+        i.Presentations = (r.Presentations ?? []).Select(p => new ItemPresentation
+        {
+            Code = p.Code.Trim().ToUpperInvariant(),
+            Name = p.Name.Trim(),
+            Factor = decimal.Round(p.Factor, 6),
+            Barcode = Clean(p.Barcode),
+            UnitCode = Clean(p.UnitCode)?.ToUpperInvariant(),
+        }).ToList();
     }
 
     /// <summary>Sin moneda explícita, un artículo nuevo usa la moneda de la empresa.</summary>
@@ -61,9 +76,16 @@ public sealed class ItemsController(VortexDbContext db, MasterDataWriter writer)
             x.OrganizationId == i.OrganizationId && x.Id != i.Id && x.DeletedAt == null && x.Sku == i.Sku);
         if (duplicate)
             throw ApiException.Conflict(ErrorCodes.DuplicateSku, $"Ya existe un artículo con SKU {i.Sku}.");
+
+        if (i.Presentations.Select(p => p.Code).Distinct().Count() != i.Presentations.Count)
+            throw ApiException.BadRequest(ErrorCodes.Validation, "Hay dos presentaciones con el mismo código.");
+        var codes = i.Presentations.Select(p => p.Barcode).Append(i.Barcode).OfType<string>().ToList();
+        if (codes.Distinct().Count() != codes.Count)
+            throw ApiException.BadRequest(ErrorCodes.Validation, "Un código de barras se repite en el artículo.");
     }
 
     protected override ItemDto ToDto(Item i) => new(
         i.Id, i.Sku, i.Name, i.Kind, i.Description, i.Unit, i.Barcode, i.Category, i.Price, i.CurrencyCode, i.TaxCode,
-        i.TrackInventory, i.IsActive, Meta(i));
+        i.TrackInventory, i.IsActive, Meta(i), i.UnitCode, i.WeightKg, i.Tracking,
+        i.Presentations.Select(p => new ItemPresentationDto(p.Code, p.Name, p.Factor, p.Barcode, p.UnitCode)).ToList());
 }

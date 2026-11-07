@@ -48,12 +48,24 @@ public sealed record ItemRequest(
     [StringLength(3, MinimumLength = 3)] string? CurrencyCode = null,
     [MaxLength(20)] string? TaxCode = null,
     bool? TrackInventory = null,
-    bool IsActive = true);
+    bool IsActive = true,
+    [MaxLength(10)] string? UnitCode = null,
+    [Range(0, 1_000_000)] decimal? WeightKg = null,
+    ItemTracking Tracking = ItemTracking.None,
+    [MaxLength(20)] List<ItemPresentationDto>? Presentations = null);
+
+/// <param name="Factor">Unidades base que trae la presentación (caja × 12 = 12).</param>
+public sealed record ItemPresentationDto(
+    [Required, MaxLength(20)] string Code,
+    [Required, MaxLength(100)] string Name,
+    [Range(0.000001, 1_000_000)] decimal Factor,
+    [MaxLength(64)] string? Barcode = null,
+    [MaxLength(10)] string? UnitCode = null);
 
 public sealed record ItemDto(
     Guid Id, string Sku, string Name, ItemKind Kind, string? Description, string Unit, string? Barcode,
     string? Category, decimal Price, string CurrencyCode, string? TaxCode, bool TrackInventory, bool IsActive,
-    MasterMeta Meta);
+    MasterMeta Meta, string? UnitCode, decimal? WeightKg, ItemTracking Tracking, IReadOnlyList<ItemPresentationDto> Presentations);
 
 public sealed record SiteRequest(
     [Required, MaxLength(20)] string Code,

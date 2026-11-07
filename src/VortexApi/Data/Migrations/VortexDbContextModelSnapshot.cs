@@ -446,10 +446,17 @@ namespace VortexApi.Data.Migrations
                     b.Property<bool>("TrackInventory")
                         .HasColumnType("bit");
 
+                    b.Property<int>("Tracking")
+                        .HasColumnType("int");
+
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("UnitCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -457,6 +464,10 @@ namespace VortexApi.Data.Migrations
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("int");
+
+                    b.Property<decimal?>("WeightKg")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
 
                     b.HasKey("Id");
 
@@ -1058,6 +1069,40 @@ namespace VortexApi.Data.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.OwnsMany("VortexApi.Domain.ItemPresentation", "Presentations", b1 =>
+                        {
+                            b1.Property<Guid>("ItemId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<string>("Barcode");
+
+                            b1.Property<string>("Code")
+                                .IsRequired();
+
+                            b1.Property<decimal>("Factor")
+                                .HasPrecision(18, 6);
+
+                            b1.Property<string>("Name")
+                                .IsRequired();
+
+                            b1.Property<string>("UnitCode");
+
+                            b1.HasKey("ItemId", "__synthesizedOrdinal");
+
+                            b1.ToTable("Items");
+
+                            b1
+                                .ToJson("Presentations")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ItemId");
+                        });
+
+                    b.Navigation("Presentations");
                 });
 
             modelBuilder.Entity("VortexApi.Domain.OrganizationProduct", b =>
