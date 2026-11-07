@@ -41,6 +41,14 @@ public sealed class EventCatalogTests
         Assert.Equal(["WMS"], internal_.Consumers);
     }
 
+    [Fact]
+    public void Los_eventos_internos_del_pos_solo_los_usa_el_pos()
+    {
+        var internal_ = Assert.Single(EventCatalog.Entries, e => e.Type.StartsWith("pos.", StringComparison.Ordinal));
+        Assert.Equal("pos.record.upserted", internal_.Type);
+        Assert.Equal(["POS"], internal_.Consumers);
+    }
+
     /// <summary><c>master.item.created|updated|deleted</c> → los tres tipos.</summary>
     private static IEnumerable<string> Expand(string type)
     {
