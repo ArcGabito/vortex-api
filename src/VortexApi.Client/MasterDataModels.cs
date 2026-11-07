@@ -17,9 +17,21 @@ public sealed record VortexParty(
     string? DocumentNumber, string? Email, string? Phone, VortexAddress? Address, string? Notes, bool IsActive,
     VortexMasterMeta Meta);
 
+/// <summary>
+/// Artículo del hub. <c>UnitCode</c> es la unidad base (UN/ECE Rec. 20; Tabla 6 de SUNAT); <c>Tracking</c> es
+/// <c>None</c>, <c>Lot</c> (con vencimiento) o <c>Serial</c>; <c>Presentations</c> trae el factor en unidades base (caja × 12).
+/// </summary>
 public sealed record VortexItem(
     Guid Id, string Sku, string Name, string Kind, string? Description, string Unit, string? Barcode, string? Category,
-    decimal Price, string CurrencyCode, string? TaxCode, bool TrackInventory, bool IsActive, VortexMasterMeta Meta);
+    decimal Price, string CurrencyCode, string? TaxCode, bool TrackInventory, bool IsActive, VortexMasterMeta Meta,
+    string? UnitCode = null, decimal? WeightKg = null, string Tracking = "None", IReadOnlyList<VortexItemPresentation>? Presentations = null)
+{
+    /// <summary>La presentación con ese código de barras (null si es el de la unidad o no es de este artículo).</summary>
+    public VortexItemPresentation? PresentationFor(string barcode) =>
+        Presentations?.FirstOrDefault(p => string.Equals(p.Barcode, barcode.Trim(), StringComparison.Ordinal));
+}
+
+public sealed record VortexItemPresentation(string Code, string Name, decimal Factor, string? Barcode = null, string? UnitCode = null);
 
 public sealed record VortexSite(
     Guid Id, string Code, string Name, string Kind, string? Phone, VortexAddress? Address, bool IsActive, VortexMasterMeta Meta);

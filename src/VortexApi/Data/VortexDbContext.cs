@@ -138,7 +138,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
 
         // Los Id Guid se asignan en el constructor; así EF trata como nuevas (Added) las entidades
         // agregadas por navegación (p. ej. product.Members.Add) en lugar de intentar un UPDATE.
-        foreach (var entity in b.Model.GetEntityTypes())
+        foreach (var entity in b.Model.GetEntityTypes().Where(t => !t.IsOwned()))
         {
             var key = entity.FindPrimaryKey()?.Properties.SingleOrDefault();
             if (key?.ClrType == typeof(Guid))
@@ -181,6 +181,13 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.TaxCode).HasMaxLength(20);
             e.HasIndex(x => new { x.OrganizationId, x.Sku }).IsUnique().HasFilter(NotDeleted);
             e.HasIndex(x => new { x.OrganizationId, x.Barcode });
+            e.Property(x => x.UnitCode).HasMaxLength(10);
+            e.Property(x => x.WeightKg).HasPrecision(18, 4);
+            e.OwnsMany(x => x.Presentations, p =>
+            {
+                p.ToJson();
+                p.Property(x => x.Factor).HasPrecision(18, 6);
+            });
         });
 
         b.Entity<Site>(e =>

@@ -8,6 +8,10 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Artículo para almacén y venta:** unidad base con código UN/ECE (`unitCode`), peso (`weightKg`), control por lote
+  o serie (`tracking`) y presentaciones con factor y código de barras propio (`presentations`, caja × 24). La búsqueda
+  `?barcode=` encuentra el artículo por el código de la unidad o de cualquier presentación, y el SDK expone
+  `VortexItem.PresentationFor(barcode)`. Migración `ItemPresentations`.
 - Paquete **`VortexApi.Suite`**, base común de ERP, CRM, WMS y POS: impuestos por país (Perú, LATAM, EE. UU., Reino
   Unido y UE) con desglose por tasa, monedas ISO 4217 con su redondeo, formatos regionales y hora de la empresa,
   permisos por rol, auditoría y textos en español, inglés y portugués. Se empaqueta con el SDK (`scripts/pack-sdk.sh`,

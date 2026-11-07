@@ -72,6 +72,35 @@ public class Item : MasterEntity
     /// <summary>Si el WMS/POS controla stock del artículo. Los servicios no llevan inventario.</summary>
     public bool TrackInventory { get; set; } = true;
     public bool IsActive { get; set; } = true;
+
+    /// <summary>Código de la unidad base (UN/ECE Rec. 20; en Perú, Tabla 6 de SUNAT): <c>NIU</c>, <c>KGM</c>, <c>LTR</c>…</summary>
+    public string? UnitCode { get; set; }
+
+    /// <summary>Peso bruto de una unidad base en kg (guías de remisión, fletes, picking).</summary>
+    public decimal? WeightKg { get; set; }
+
+    /// <summary>Si el stock se controla por lote (con vencimiento) o por número de serie.</summary>
+    public ItemTracking Tracking { get; set; }
+
+    /// <summary>Presentaciones de compra y venta (caja × 12, paquete × 6). El stock siempre se lleva en la unidad base.</summary>
+    public List<ItemPresentation> Presentations { get; set; } = [];
+}
+
+public enum ItemTracking
+{
+    None = 0,
+    Lot = 1,
+    Serial = 2,
+}
+
+/// <summary>Presentación de un artículo: cuántas unidades base trae y con qué código de barras se reconoce (DUN-14, EAN).</summary>
+public class ItemPresentation
+{
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public decimal Factor { get; set; }
+    public string? Barcode { get; set; }
+    public string? UnitCode { get; set; }
 }
 
 public enum SiteKind
