@@ -1,6 +1,7 @@
 namespace VortexApi.Client;
 
-public sealed record VortexUser(Guid Id, string Email, string FullName, string Role, Guid? OrganizationId);
+/// <summary>Usuario de la sesión. <c>Language</c>: idioma preferido (<c>es</c>, <c>en</c>, <c>pt</c>); null = el del país de la empresa.</summary>
+public sealed record VortexUser(Guid Id, string Email, string FullName, string Role, Guid? OrganizationId, string? Language = null);
 
 /// <summary>Acceso del usuario al sistema en este equipo.</summary>
 public sealed record VortexAccess(

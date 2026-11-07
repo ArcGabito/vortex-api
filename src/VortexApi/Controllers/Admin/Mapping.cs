@@ -9,7 +9,7 @@ internal static class Mapping
 {
     public static UserDto ToDto(this User u, DateTimeOffset now) => new(
         u.Id, u.OrganizationId, u.Email, u.FullName, u.Role.ToString(), u.IsActive, u.LockoutEnd > now,
-        u.CreatedAt, u.LastLoginAt);
+        u.CreatedAt, u.LastLoginAt, u.Language);
 
     public static OrganizationProductDto ToDto(this OrganizationProduct p, int members, DateTimeOffset now) => new(
         p.Id, p.OrganizationId, p.Product.Code, p.Product.Name, p.IsEnabled, p.DisabledReason, p.AutoAssignUsers,

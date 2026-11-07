@@ -57,6 +57,17 @@ public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions opti
             Content = JsonContent.Create(new { refreshToken }, options: Json),
         }, ct);
 
+/// <summary>
+    /// Guarda el idioma preferido del usuario en el hub (<c>es</c>, <c>en</c>, <c>pt</c>; null vuelve al del país), para
+    /// que lo usen todos los sistemas y equipos. No cierra la sesión.
+    /// </summary>
+    public Task<VortexUser> SetLanguageAsync(string accessToken, string? language, CancellationToken ct = default)
+    {
+        var request = Authorized(HttpMethod.Put, "api/auth/me/preferences", accessToken);
+        request.Content = JsonContent.Create(new { language }, options: Json);
+        return SendAsync<VortexUser>(request, ct)!;
+    }
+
     /// <summary>JWKS con las llaves públicas; guárdelo junto al offline token para validar sin conexión.</summary>
     public Task<string> GetSigningKeysAsync(CancellationToken ct = default) =>
         http.GetStringAsync(".well-known/jwks.json", ct);

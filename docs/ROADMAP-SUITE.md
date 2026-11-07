@@ -77,6 +77,6 @@ listas para tiendas (Microsoft Store, Google Play, App Store).
 
 - ~~**Tipos de cambio**~~: hecho (`exchange_rate`, `OnExchangeRates`, `GetExchangeRateAsync`, 2026-11).
 - ~~**Artículo de almacén y venta**~~: hecho (presentaciones, varios códigos, unidad UN/ECE, peso, lote/serie; 2026-11).
-- **Idioma preferido del usuario** en la sesión.
+- ~~**Idioma preferido del usuario**~~: hecho (`User.Language`, `SetLanguageAsync`, 2026-11).
 - ~~**Sedes por usuario**~~: hecho (`Access.SiteIds`, 2026-11).
 - **Eventos de cancelación** (`order.cancelled`, `invoice.voided`, `purchase_order.cancelled`) para replicar estados.

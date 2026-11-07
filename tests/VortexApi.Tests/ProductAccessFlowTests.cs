@@ -59,6 +59,25 @@ public sealed class ProductAccessFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Preferred_language_is_saved_in_the_hub_and_travels_in_the_session()
+    {
+        var erp = Client("ERP");
+        var session = await erp.LoginAsync(Ana, UserPassword, DeviceA);
+        Assert.Null(session.User.Language);
+
+        // Ana elige portugués en el ERP; no se cierra su sesión y el próximo login ya lo trae.
+        var user = await erp.SetLanguageAsync(session.AccessToken, "pt-BR");
+        Assert.Equal("pt", user.Language);
+        Assert.NotNull(await erp.HeartbeatAsync(session.AccessToken));
+        Assert.Equal("pt", (await erp.RefreshAsync(session.RefreshToken, DeviceA)).User.Language);
+
+        var invalid = await Assert.ThrowsAsync<VortexApiException>(() => erp.SetLanguageAsync(session.AccessToken, "fr"));
+        Assert.Equal("validation_error", invalid.Code);
+
+        Assert.Null((await erp.SetLanguageAsync(session.AccessToken, null)).Language);
+    }
+
+    [Fact]
     public async Task Offline_token_cannot_be_used_as_access_token()
     {
         var session = await Client("ERP").LoginAsync(Ana, UserPassword, DeviceA);
