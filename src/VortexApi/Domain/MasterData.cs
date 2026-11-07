@@ -111,6 +111,27 @@ public enum SiteKind
     Other = 3,
 }
 
+/// <summary>
+/// Tipo de cambio de un día: 1 <see cref="FromCurrency"/> = <see cref="Rate"/> <see cref="ToCurrency"/>. Lo publica el
+/// ERP o el administrador (p. ej. el de SUNAT o el BCE) y lo usan todos los sistemas para convertir igual.
+/// </summary>
+public class ExchangeRate : MasterEntity
+{
+    public DateOnly Date { get; set; }
+    public string FromCurrency { get; set; } = "";
+    public string ToCurrency { get; set; } = "";
+
+    /// <summary>Tasa de referencia (promedio o la oficial).</summary>
+    public decimal Rate { get; set; }
+
+    /// <summary>Compra y venta, si la fuente las publica (en Perú, SUNAT publica ambas).</summary>
+    public decimal? BuyRate { get; set; }
+    public decimal? SellRate { get; set; }
+
+    /// <summary>De dónde salió: <c>SUNAT</c>, <c>SBS</c>, <c>BCE</c>, <c>manual</c>…</summary>
+    public string? Source { get; set; }
+}
+
 /// <summary>Sede, tienda o almacén (ERP, WMS, POS).</summary>
 public class Site : MasterEntity
 {
@@ -184,6 +205,7 @@ public static class MasterEntityTypes
     public const string Item = "item";
     public const string Site = "site";
     public const string Company = "company";
+    public const string ExchangeRate = "exchange_rate";
 
-    public static readonly IReadOnlySet<string> All = new HashSet<string> { Party, Item, Site, Company };
+    public static readonly IReadOnlySet<string> All = new HashSet<string> { Party, Item, Site, Company, ExchangeRate };
 }

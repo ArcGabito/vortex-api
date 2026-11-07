@@ -108,6 +108,38 @@ public sealed class MasterDataTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Exchange_rate_in_force_on_a_date_is_shared_through_the_feed()
+    {
+        await _erp.PostOkAsync("api/master/exchange-rates", new
+        {
+            date = "2026-11-05", fromCurrency = "usd", toCurrency = "pen", rate = 3.765m, buyRate = 3.761m, sellRate = 3.769m, source = "sunat",
+        });
+        await _erp.PostOkAsync("api/master/exchange-rates", new { date = "2026-11-06", fromCurrency = "USD", toCurrency = "PEN", rate = 3.772m });
+
+        // El sábado no hay publicación: vale la del viernes.
+        var saturday = await (await _pos.GetAsync("api/master/exchange-rates/latest?from=USD&to=PEN&date=2026-11-07")).ReadJsonAsync();
+        Assert.Equal(3.772m, saturday.GetProperty("rate").GetDecimal());
+        var thursday = (await (await _pos.GetAsync("api/master/exchange-rates/latest?from=usd&to=pen&date=2026-11-05")).ReadJsonAsync())
+            .Deserialize<VortexExchangeRate>(VortexJson.Options)!;
+        Assert.Equal("SUNAT", thursday.Source);
+        Assert.Equal(376.9m, thursday.Convert(100, VortexRateSide.Sell));
+        Assert.Equal(100m, decimal.Round(thursday.ConvertBack(376.5m), 2));
+
+        var none = await _pos.GetAsync("api/master/exchange-rates/latest?from=EUR&to=PEN");
+        Assert.Equal(HttpStatusCode.NotFound, none.StatusCode);
+
+        // Un solo tipo de cambio por par y día; corregirlo es actualizar el existente.
+        var duplicate = await _erp.PostAsJsonAsync("api/master/exchange-rates", new { date = "2026-11-06", fromCurrency = "USD", toCurrency = "PEN", rate = 3.8m });
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        var same = await _erp.PostAsJsonAsync("api/master/exchange-rates", new { date = "2026-11-06", fromCurrency = "PEN", toCurrency = "PEN", rate = 1m });
+        Assert.Equal(HttpStatusCode.BadRequest, same.StatusCode);
+
+        var feed = await GetFeedAsync(_pos, 0, types: "exchange_rate");
+        Assert.Equal(2, feed.GetProperty("changes").GetArrayLength());
+        Assert.All(feed.GetProperty("changes").EnumerateArray(), c => Assert.Equal("exchange_rate", c.GetProperty("entityType").GetString()));
+    }
+
+    [Fact]
     public async Task Item_presentations_are_found_by_any_barcode_and_reach_the_SDK()
     {
         var item = await _erp.PostOkAsync("api/master/items", new

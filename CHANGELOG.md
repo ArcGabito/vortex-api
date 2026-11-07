@@ -8,6 +8,10 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Tipos de cambio** como dato maestro (`exchange_rate`): uno por par de monedas y día, con compra, venta y
+  fuente. `GET /api/master/exchange-rates/latest` da el vigente en una fecha (o el último anterior); llega a los
+  sistemas por el feed (`OnExchangeRates`) y el SDK suma `GetExchangeRateAsync` y `VortexExchangeRate.Convert`.
+  Migración `ExchangeRates`.
 - **Artículo para almacén y venta:** unidad base con código UN/ECE (`unitCode`), peso (`weightKg`), control por lote
   o serie (`tracking`) y presentaciones con factor y código de barras propio (`presentations`, caja × 24). La búsqueda
   `?barcode=` encuentra el artículo por el código de la unidad o de cualquier presentación, y el SDK expone

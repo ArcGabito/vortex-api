@@ -75,7 +75,8 @@ listas para tiendas (Microsoft Store, Google Play, App Store).
 
 ## Propuestas al hub que salen de este plan
 
-- **Tipos de cambio** como dato maestro (fecha, moneda, tasa), para que ERP, CRM y POS conviertan igual.
+- ~~**Tipos de cambio**~~: hecho (`exchange_rate`, `OnExchangeRates`, `GetExchangeRateAsync`, 2026-11).
+- ~~**Artículo de almacén y venta**~~: hecho (presentaciones, varios códigos, unidad UN/ECE, peso, lote/serie; 2026-11).
 - **Idioma preferido del usuario** en la sesión.
 - ~~**Sedes por usuario**~~: hecho (`Access.SiteIds`, 2026-11).
 - **Eventos de cancelación** (`order.cancelled`, `invoice.voided`, `purchase_order.cancelled`) para replicar estados.
