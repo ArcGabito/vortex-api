@@ -15,7 +15,13 @@ public sealed record VortexMasterMeta(int Version, DateTimeOffset CreatedAt, Dat
 public sealed record VortexParty(
     Guid Id, bool IsCustomer, bool IsSupplier, string Kind, string Name, string? TradeName, string? DocumentType,
     string? DocumentNumber, string? Email, string? Phone, VortexAddress? Address, string? Notes, bool IsActive,
-    VortexMasterMeta Meta);
+    VortexMasterMeta Meta, VortexPartyCredit? Credit = null, VortexPartyAccount? Account = null);
+
+/// <summary>Condiciones comerciales del cliente (las maneja el ERP): plazo, límite de crédito en la moneda de la empresa y descuento.</summary>
+public sealed record VortexPartyCredit(int? PaymentTermDays = null, decimal? CreditLimit = null, decimal? DiscountPercent = null);
+
+/// <summary>Quién del equipo atiende al cliente (lo maneja el CRM).</summary>
+public sealed record VortexPartyAccount(Guid? OwnerUserId = null, string? OwnerName = null);
 
 /// <summary>
 /// Artículo del hub. <c>UnitCode</c> es la unidad base (UN/ECE Rec. 20; Tabla 6 de SUNAT); <c>Tracking</c> es

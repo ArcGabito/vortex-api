@@ -260,7 +260,10 @@ Campos que acepta el hub (los demás se ignoran):
 { "name": "Bodega Don Pepe", "isCustomer": true, "isSupplier": false, "kind": "Company",   // Company | Person
   "tradeName": null, "documentType": "RUC", "documentNumber": "20123456789", "email": null, "phone": null,
   "address": { "line": "Av. Perú 123", "district": "Breña", "city": "Lima", "region": null, "postalCode": null, "countryCode": "PE" },
-  "notes": null, "isActive": true }
+  "notes": null, "isActive": true,
+  // Opcionales; si no se mandan en un PUT quedan como estaban (un sistema que no los conoce no los borra).
+  "credit": { "paymentTermDays": 30, "creditLimit": 5000.00, "discountPercent": 5 },   // ERP; límite en la moneda de la empresa
+  "account": { "ownerUserId": "guid", "ownerName": "Luis Demo" } }                       // CRM; responsable del cliente
 
 // item    PUT /api/master/items/{id}
 { "sku": "CAFE-250", "name": "Café tostado 250 g", "kind": "Product",   // Product | Service

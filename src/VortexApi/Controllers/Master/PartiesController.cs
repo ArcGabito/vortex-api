@@ -57,6 +57,11 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
         p.CountryCode = Clean(r.Address?.CountryCode)?.ToUpperInvariant();
         p.Notes = Clean(r.Notes);
         p.IsActive = r.IsActive;
+        if (r.Credit is { } credit)
+            (p.PaymentTermDays, p.CreditLimit, p.DiscountPercent) = (credit.PaymentTermDays, credit.CreditLimit,
+                credit.DiscountPercent is 0 ? null : credit.DiscountPercent);
+        if (r.Account is { } account)
+            (p.OwnerUserId, p.OwnerName) = (account.OwnerUserId, account.OwnerUserId is null ? null : Clean(account.OwnerName));
     }
 
     protected override async Task ValidateAsync(Party p)
@@ -84,7 +89,11 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
         p.AddressLine is null && p.City is null && p.CountryCode is null
             ? null
             : new AddressDto(p.AddressLine, p.District, p.City, p.Region, p.PostalCode, p.CountryCode),
-        p.Notes, p.IsActive, Meta(p));
+        p.Notes, p.IsActive, Meta(p),
+        p.PaymentTermDays is null && p.CreditLimit is null && p.DiscountPercent is null
+            ? null
+            : new PartyCreditDto(p.PaymentTermDays, p.CreditLimit, p.DiscountPercent),
+        p.OwnerUserId is null ? null : new PartyAccountDto(p.OwnerUserId, p.OwnerName));
 
     private static string NormalizeDocument(string value) =>
         new string(value.Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray()).ToUpperInvariant();

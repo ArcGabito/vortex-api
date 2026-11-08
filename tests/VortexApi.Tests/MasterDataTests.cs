@@ -140,6 +140,42 @@ public sealed class MasterDataTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Credit_terms_and_account_owner_survive_updates_from_systems_that_do_not_send_them()
+    {
+        var owner = Guid.NewGuid();
+        var created = await _erp.PostOkAsync("api/master/parties", new
+        {
+            name = "Ferretería Lima", documentType = "RUC", documentNumber = "20111222333",
+            credit = new { paymentTermDays = 30, creditLimit = 5000m, discountPercent = 5m },
+        });
+        var id = created.GetProperty("id").GetGuid();
+        Assert.Equal(30, created.GetProperty("credit").GetProperty("paymentTermDays").GetInt32());
+
+        // El POS (que no conoce las condiciones) corrige el teléfono: el crédito queda como estaba.
+        await _pos.PutOkAsync($"api/master/parties/{id}", new { name = "Ferretería Lima", documentType = "RUC", documentNumber = "20111222333", phone = "999 111 222" });
+        // El CRM asigna el responsable sin tocar el crédito.
+        var updated = await _erp.PutOkAsync($"api/master/parties/{id}", new
+        {
+            name = "Ferretería Lima", documentType = "RUC", documentNumber = "20111222333", phone = "999 111 222",
+            account = new { ownerUserId = owner, ownerName = "Luis Demo" },
+        });
+        Assert.Equal(5000m, updated.GetProperty("credit").GetProperty("creditLimit").GetDecimal());
+        Assert.Equal(owner, updated.GetProperty("account").GetProperty("ownerUserId").GetGuid());
+
+        // Llega así por el feed a los SDK.
+        var party = (await (await _pos.GetAsync($"api/master/parties/{id}")).ReadJsonAsync()).Deserialize<VortexParty>(VortexJson.Options)!;
+        Assert.Equal(new VortexPartyCredit(30, 5000m, 5m), party.Credit);
+        Assert.Equal("Luis Demo", party.Account!.OwnerName);
+
+        // Mandar el bloque vacío sí lo limpia (sin límite, sin descuento, contado sin definir).
+        var cleared = await _erp.PutOkAsync($"api/master/parties/{id}", new { name = "Ferretería Lima", documentType = "RUC", documentNumber = "20111222333", credit = new { } });
+        Assert.Equal(JsonValueKind.Null, cleared.GetProperty("credit").ValueKind);
+
+        var bad = await _erp.PostAsJsonAsync("api/master/parties", new { name = "X", credit = new { discountPercent = 120m } });
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Fact]
     public async Task Item_presentations_are_found_by_any_barcode_and_reach_the_SDK()
     {
         var item = await _erp.PostOkAsync("api/master/items", new

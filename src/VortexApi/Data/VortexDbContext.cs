@@ -164,6 +164,9 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Phone).HasMaxLength(50);
             e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.CreditLimit).HasPrecision(18, 2);
+            e.Property(x => x.DiscountPercent).HasPrecision(5, 2);
+            e.Property(x => x.OwnerName).HasMaxLength(200);
             Address(e);
             e.HasIndex(x => new { x.OrganizationId, x.DocumentType, x.DocumentNumber }).IsUnique()
                 .HasFilter($"{NotDeleted} AND [DocumentNumber] IS NOT NULL");
