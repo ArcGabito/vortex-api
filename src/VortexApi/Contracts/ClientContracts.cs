@@ -55,3 +55,9 @@ public sealed record UserInfo(Guid Id, string Email, string FullName, string Rol
 
 /// <param name="Language"><c>es</c>, <c>en</c> o <c>pt</c>; vacío vuelve al idioma del país de la empresa.</param>
 public sealed record PreferencesRequest([MaxLength(10)] string? Language);
+
+/// <param name="Pin">De 4 a 8 dígitos; vacío quita el PIN.</param>
+public sealed record SetPinRequest([Required, MaxLength(256)] string CurrentPassword, [MaxLength(8)] string? Pin);
+
+/// <summary>Verificador del PIN de un miembro del sistema, para validarlo sin conexión (nunca el PIN).</summary>
+public sealed record PinVerifier(Guid UserId, string FullName, string? Email, string? Role, string PinHash);

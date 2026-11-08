@@ -78,6 +78,34 @@ public sealed class ProductAccessFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pin_is_hashed_and_its_verifier_reaches_the_other_members_of_the_system()
+    {
+        var bobId = await CreateUserAsync("bob@acme.test");
+        await AddMemberAsync("ERP", bobId, "facturador");
+        var erp = Client("ERP");
+        var ana = await erp.LoginAsync(Ana, UserPassword, DeviceA);
+        var bob = await erp.LoginAsync("bob@acme.test", UserPassword, DeviceB);
+
+        var weak = await Assert.ThrowsAsync<VortexApiException>(() => erp.SetPinAsync(ana.AccessToken, UserPassword, "1234"));
+        Assert.Equal("validation_error", weak.Code);
+        var wrongPassword = await Assert.ThrowsAsync<VortexApiException>(() => erp.SetPinAsync(ana.AccessToken, "otra", "482915"));
+        Assert.Equal("invalid_credentials", wrongPassword.Code);
+
+        await erp.SetPinAsync(ana.AccessToken, UserPassword, "482915");
+        Assert.DoesNotContain(await erp.GetPinVerifiersAsync(ana.AccessToken), v => v.UserId == bobId);   // Bob no tiene PIN
+
+        // Bob, desde su equipo, recibe el verificador de Ana (nunca el PIN) y lo valida sin conexión.
+        var verifier = Assert.Single(await erp.GetPinVerifiersAsync(bob.AccessToken));
+        Assert.Equal((_userId, "contador"), (verifier.UserId, verifier.Role));
+        Assert.DoesNotContain("482915", verifier.PinHash);
+        Assert.True(VortexPin.Verify("482915", verifier.PinHash));
+        Assert.False(VortexPin.Verify("482916", verifier.PinHash));
+
+        await erp.SetPinAsync(ana.AccessToken, UserPassword, null);
+        Assert.Empty(await erp.GetPinVerifiersAsync(bob.AccessToken));
+    }
+
+    [Fact]
     public async Task Offline_token_cannot_be_used_as_access_token()
     {
         var session = await Client("ERP").LoginAsync(Ana, UserPassword, DeviceA);

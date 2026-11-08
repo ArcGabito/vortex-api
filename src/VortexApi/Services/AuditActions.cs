@@ -11,6 +11,7 @@ public static class AuditActions
     public const string DeviceActivated = "device.activated";
     public const string DeviceRevoked = "device.revoked";
     public const string PasswordChanged = "user.password_changed";
+    public const string PinChanged = "user.pin_changed";
     public const string UserCreated = "user.created";
     public const string UserUpdated = "user.updated";
     public const string UserPasswordReset = "user.password_reset";
