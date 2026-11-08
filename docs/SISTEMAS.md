@@ -351,6 +351,8 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
   "currencyCode": "PEN", "subtotal": 50.76, "tax": 9.14, "total": 59.90,
   "lines": [ { "itemId": "guid", "sku": "CAFE-250", "quantity": 2, "unitPrice": 29.95, "discount": 0, "total": 59.90 } ],
   "payments": [ { "method": "cash", "amount": 59.90 } ] }        // cash | card | transfer | wallet | credit
+//                        (POS fase 3b: "coupon": "VERANO" | null con el cupón usado, y en cada línea "promotionId": "guid | null"
+//                         con la promoción que hizo su descuento)
 
 // sale.voided          { "saleId": "guid", "number": "B001-000123", "reason": "..." }
 // sale.returned        { "saleId": "guid", "returnId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "total" } ], "total": 0 }
@@ -366,6 +368,7 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 
 // invoice.issued       { "invoiceId": "guid", "number": "F001-000045", "customerId": "guid", "saleId": "guid | null",
 //                        "orderId": "guid | null", "issuedAt": "...", "total": 0, "currencyCode": "PEN" }
+//                        (ERP fase 3b: "shipmentId": "guid | null" cuando factura un despacho parcial del pedido)
 // payment.received     { "paymentId": "guid", "customerId": "guid | null", "invoiceId": "guid | null",
 //                        "saleId": "guid | null", "amount": 0, "currencyCode": "PEN", "method": "transfer" }
 
@@ -383,6 +386,9 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 // stock.relocated      { "siteId": "guid", "itemId": "guid", "fromLocationId": "guid|null", "toLocationId": "guid|null", "quantity": 0, "reference": null }
 // stock.transferred    { "transferId": "guid", "fromSiteId": "guid", "toSiteId": "guid", "lines": [ { "itemId", "quantity" } ] }
 // shipment.dispatched  { "shipmentId": "guid", "orderId": "guid", "customerId": "guid", "carrier": "...", "trackingNumber": "..." }
+//                        (WMS: "number", "siteId" y "lines": [ { "itemId", "quantity", "lots", "serials" } ] con lo despachado;
+//                         fase 4b1: "partial": true si el pedido queda con saldo (cada parte es un despacho con su Id);
+//                         fase 4b2: "packages": [ { "number": 1, "weightKg": 2.4 | null, "lines": [ { "itemId", "quantity" } ] } ])
 ```
 
 Cambios incompatibles en un evento → publicarlo con otro `schemaVersion` (campo de `POST /api/events`; el SDK
