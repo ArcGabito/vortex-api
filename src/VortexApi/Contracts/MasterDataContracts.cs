@@ -29,12 +29,29 @@ public sealed record PartyRequest(
     [MaxLength(50)] string? Phone = null,
     AddressDto? Address = null,
     [MaxLength(2000)] string? Notes = null,
-    bool IsActive = true);
+    bool IsActive = true,
+    PartyCreditDto? Credit = null,
+    PartyAccountDto? Account = null);
+
+/// <summary>
+/// Condiciones comerciales del cliente (las maneja el ERP). En un PUT, si no se manda, quedan como estaban: así un
+/// sistema que no las conoce no las borra al guardar el cliente.
+/// </summary>
+/// <param name="PaymentTermDays">Días de plazo para pagar (0 = contado).</param>
+/// <param name="CreditLimit">Crédito máximo en la moneda de la empresa (null = sin límite).</param>
+/// <param name="DiscountPercent">Descuento habitual del cliente (0 a 100).</param>
+public sealed record PartyCreditDto(
+    [Range(0, 365)] int? PaymentTermDays = null,
+    [Range(0, 999_999_999)] decimal? CreditLimit = null,
+    [Range(0, 100)] decimal? DiscountPercent = null);
+
+/// <summary>Quién del equipo atiende al cliente (lo maneja el CRM). En un PUT, si no se manda, queda como estaba.</summary>
+public sealed record PartyAccountDto(Guid? OwnerUserId = null, [MaxLength(200)] string? OwnerName = null);
 
 public sealed record PartyDto(
     Guid Id, bool IsCustomer, bool IsSupplier, PartyKind Kind, string Name, string? TradeName,
     string? DocumentType, string? DocumentNumber, string? Email, string? Phone, AddressDto? Address,
-    string? Notes, bool IsActive, MasterMeta Meta);
+    string? Notes, bool IsActive, MasterMeta Meta, PartyCreditDto? Credit = null, PartyAccountDto? Account = null);
 
 public sealed record ItemRequest(
     [Required, MaxLength(64)] string Sku,

@@ -45,6 +45,21 @@ public class Party : MasterEntity
     public string? CountryCode { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
+
+    // Condiciones comerciales (las maneja el ERP).
+
+    /// <summary>Días de plazo para pagar (0 = contado; null = sin definir).</summary>
+    public int? PaymentTermDays { get; set; }
+
+    /// <summary>Crédito máximo en la moneda de la empresa (null = sin límite).</summary>
+    public decimal? CreditLimit { get; set; }
+
+    /// <summary>Descuento habitual del cliente, en porcentaje (0 a 100).</summary>
+    public decimal? DiscountPercent { get; set; }
+
+    // Cuenta (la maneja el CRM): quién del equipo atiende al cliente.
+    public Guid? OwnerUserId { get; set; }
+    public string? OwnerName { get; set; }
 }
 
 public enum ItemKind

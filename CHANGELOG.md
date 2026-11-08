@@ -8,6 +8,10 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Condiciones comerciales y responsable del cliente en `party`:** bloques opcionales `credit` (plazo de pago en días,
+  límite de crédito en la moneda de la empresa y descuento habitual; los maneja el ERP) y `account` (usuario
+  responsable; lo maneja el CRM). En un PUT, el bloque que no se manda queda como estaba, así los sistemas que no los
+  conocen no los borran. SDK: `VortexParty.Credit` y `VortexParty.Account`. Migración `PartyCreditAndAccount`.
 - **PIN de caja por usuario:** `PUT api/auth/me/pin` (pide la contraseña actual; 4 a 8 dígitos, sin secuencias ni un
   mismo dígito) guarda un verificador PBKDF2-SHA256; `GET api/access/pins` entrega los verificadores de los miembros
   del mismo sistema y organización para validar el PIN sin conexión. SDK: `SetPinAsync`, `GetPinVerifiersAsync` y
