@@ -321,6 +321,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `sale.completed`, `sale.voided`, `sale.returned` | POS | ERP, WMS (y CRM `sale.completed`) |
 | `quote.accepted`, `deal.won` | CRM | ERP |
 | `order.created` | ERP, CRM (y WMS cuando funciona solo) | WMS, ERP |
+| `order.approved` | ERP | WMS, ERP |
 | `order.picking_started` | WMS | WMS (sus otros equipos), ERP, CRM |
 | `order.cancelled` | WMS, ERP, CRM | WMS, ERP, CRM |
 | `invoice.issued` | ERP | CRM, POS |
@@ -355,7 +356,9 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 // sale.returned        { "saleId": "guid", "returnId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "total" } ], "total": 0 }
 
 // order.created        { "orderId": "guid", "number": "PED-0001", "customerId": "guid", "siteId": "guid | null",
-//                        "lines": [ { "itemId", "quantity", "unitPrice" } ], "total": 0, "currencyCode": "PEN" }
+//                        "lines": [ { "itemId", "quantity", "unitPrice" } ], "total": 0, "currencyCode": "PEN",
+//                        "approvalStatus": "pending" }   // opcional: supera el límite de crédito; esperar order.approved
+// order.approved       { "orderId": "guid", "number": "PED-0001", "approvedBy": "Ana" }
 // order.picking_started { "orderId": "guid", "number": "PED-0001" }
 // order.cancelled      { "orderId": "guid", "number": "PED-0001", "reason": "... | null" }
 // quote.accepted       { "quoteId": "guid", "customerId": "guid", "lines": [ ... ], "total": 0, "currencyCode": "PEN" }

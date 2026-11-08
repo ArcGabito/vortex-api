@@ -126,6 +126,7 @@ public static class EventCatalog
         new("quote.accepted", "Cotización aceptada por el cliente.", ["CRM"], ["ERP"]),
         new("deal.won", "Oportunidad ganada.", ["CRM"], ["ERP"]),
         new("order.created", "Pedido de venta creado.", ["ERP", "CRM", "WMS"], ["WMS", "ERP"]),
+        new("order.approved", "Pedido que superaba el límite de crédito del cliente, aprobado: ya se puede preparar y facturar.", ["ERP"], ["ERP", "WMS"]),
         new("order.picking_started", "Empezó la preparación del pedido en el almacén.", ["WMS"], ["WMS", "ERP", "CRM"]),
         new("order.cancelled", "Pedido cancelado antes de despacharse: libera la reserva de stock.", ["WMS", "ERP", "CRM"], ["WMS", "ERP", "CRM"]),
         new("invoice.issued", "Comprobante emitido.", ["ERP"], ["CRM", "POS"]),
