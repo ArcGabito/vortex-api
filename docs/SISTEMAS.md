@@ -331,6 +331,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `shipment.dispatched` | WMS | ERP, CRM |
 | `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
 | `wms.record.upserted` | WMS | WMS (sus otros equipos) |
+| `stock.relocated` | WMS | WMS (sus otros equipos) |
 | `pos.record.upserted` | POS | POS (sus otras cajas) |
 | `master.{party,item,site,company,exchange_rate}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 
@@ -373,6 +374,7 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 //                         saleAmount: importe de venta en ventas y despachos)
 //                        (WMS fase 3: "lots": [ { "lotCode", "quantity" (con el signo del movimiento), "expiresAt" } ] y "serials";
 //                         lotCode "" = salió sin lote)
+// stock.relocated      { "siteId": "guid", "itemId": "guid", "fromLocationId": "guid|null", "toLocationId": "guid|null", "quantity": 0, "reference": null }
 // stock.transferred    { "transferId": "guid", "fromSiteId": "guid", "toSiteId": "guid", "lines": [ { "itemId", "quantity" } ] }
 // shipment.dispatched  { "shipmentId": "guid", "orderId": "guid", "customerId": "guid", "carrier": "...", "trackingNumber": "..." }
 ```
