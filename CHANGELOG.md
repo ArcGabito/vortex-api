@@ -8,6 +8,11 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **PIN de caja por usuario:** `PUT api/auth/me/pin` (pide la contraseña actual; 4 a 8 dígitos, sin secuencias ni un
+  mismo dígito) guarda un verificador PBKDF2-SHA256; `GET api/access/pins` entrega los verificadores de los miembros
+  del mismo sistema y organización para validar el PIN sin conexión. SDK: `SetPinAsync`, `GetPinVerifiersAsync` y
+  `VortexPin.Verify`. Migración `UserPin`. Lo usa Vortex POS para el cambio rápido de cajero y las autorizaciones del
+  supervisor.
 - `docs/SISTEMAS.md`: lotes y series en `stock.adjusted`, `goods.received`, `stock.transferred` y
   `shipment.dispatched` (campos aditivos que publica Vortex WMS desde su fase 3).
 - Eventos `credit_note.issued`, `debit_note.issued` e `invoice.voided` en el catálogo: notas vinculadas a un comprobante

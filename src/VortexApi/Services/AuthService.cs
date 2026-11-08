@@ -229,6 +229,38 @@ public sealed class AuthService(
         await db.SaveChangesAsync();
     }
 
+    public async Task SetPinAsync(Guid userId, SetPinRequest req)
+    {
+        var user = await db.Users.SingleAsync(u => u.Id == userId);
+        if (!hasher.Verify(req.CurrentPassword, user.PasswordHash))
+            throw new ApiException(StatusCodes.Status400BadRequest, ErrorCodes.InvalidCredentials, "La contraseña actual no es correcta.");
+        if (string.IsNullOrEmpty(req.Pin))
+        {
+            user.PinHash = null;
+        }
+        else
+        {
+            PinHasher.EnsurePolicy(req.Pin);
+            user.PinHash = PinHasher.Hash(req.Pin);
+        }
+        audit.Record(AuditActions.PinChanged, true, user.Id, user.OrganizationId, targetId: user.Id.ToString());
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Verificadores de PIN de los miembros del mismo sistema y organización que el equipo que pregunta.</summary>
+    public async Task<IReadOnlyList<PinVerifier>> GetPinVerifiersAsync(Guid userId, Guid deviceId)
+    {
+        var access = await db.Devices.Where(d => d.Id == deviceId && d.Member.UserId == userId && d.RevokedAt == null)
+            .Select(d => d.Member.OrganizationProductId).SingleOrDefaultAsync();
+        if (access == Guid.Empty)
+            throw Forbidden(ErrorCodes.DeviceRevoked, "El equipo ya no está activado.");
+        return await db.Set<ProductMember>()
+            .Where(m => m.OrganizationProductId == access && m.User.IsActive && m.User.PinHash != null)
+            .OrderBy(m => m.User.FullName)
+            .Select(m => new PinVerifier(m.UserId, m.User.FullName, m.User.Email, m.Role, m.User.PinHash!))
+            .ToListAsync();
+    }
+
     public async Task<UserInfo> SetPreferencesAsync(Guid userId, PreferencesRequest req)
     {
         var user = await db.Users.SingleAsync(u => u.Id == userId);

@@ -213,6 +213,20 @@ selector "Abrir Vortex ERP / CRM / …" solo con los que estén habilitados.
 administración viven en el hub. Si el sistema necesita datos propios por usuario (preferencias, caja asignada),
 los guarda referenciando el `UserId` del hub.
 
+### PIN de caja (cambio rápido de operador y autorizaciones)
+
+Cada usuario puede fijar un **PIN de 4 a 8 dígitos** (`SetPinAsync(accessToken, contraseñaActual, pin)`; `null` lo
+quita). El hub guarda solo un verificador PBKDF2-SHA256 (`pin1$iteraciones$sal$hash`) y no acepta PIN triviales
+(un mismo dígito o una secuencia). El sistema descarga los verificadores de los miembros de su sistema y organización
+con `GetPinVerifiersAsync(accessToken)` (`GET api/access/pins`) y valida un PIN sin conexión con
+`VortexPin.Verify(pin, pinHash)`, por ejemplo para cambiar de cajero sin cerrar sesión o para que un supervisor
+autorice una anulación en la caja de otro.
+
+- El PIN **no inicia sesión en el hub**: solo identifica a un miembro dentro de un equipo que ya tiene sesión.
+- Guarda los verificadores en almacenamiento seguro del equipo (no en la base local) y limita los intentos: un PIN es
+  corto y un verificador expuesto se puede adivinar probando.
+- El rol que vale es el del miembro (`role` en el verificador), con las mismas reglas que el del login.
+
 ## 4. Qué datos son del hub y cuáles del sistema
 
 | Dato | Dueño | Cómo lo usa el sistema |

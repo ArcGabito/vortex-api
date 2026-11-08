@@ -51,6 +51,19 @@ public sealed class AuthController(AuthService auth) : ControllerBase
     [Authorize]
     public Task<UserInfo> Preferences(PreferencesRequest request) => auth.SetPreferencesAsync(User.UserId(), request);
 
+    /// <summary>
+    /// Fija o quita el PIN de caja del usuario autenticado (pide la contraseña actual). No cierra sesiones: los equipos del
+    /// sistema reciben el verificador nuevo en su próxima consulta de <c>api/access/pins</c>.
+    /// </summary>
+    [HttpPut("me/pin")]
+    [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    public async Task<IActionResult> SetPin(SetPinRequest request)
+    {
+        await auth.SetPinAsync(User.UserId(), request);
+        return NoContent();
+    }
+
     /// <summary>Cambia la contraseña del usuario autenticado y cierra todas sus sesiones.</summary>
     [HttpPost("change-password")]
     [Authorize]
@@ -73,6 +86,13 @@ public sealed class AccessController(AuthService auth) : ControllerBase
     /// </summary>
     [HttpPost("heartbeat")]
     public Task<HeartbeatResponse> Heartbeat() => auth.HeartbeatAsync(User.UserId(), User.DeviceId()!.Value);
+
+    /// <summary>
+    /// Verificadores de PIN de los miembros de este sistema en la organización del equipo (para el cambio rápido de
+    /// operador y las autorizaciones sin conexión). Solo los usuarios activos con PIN.
+    /// </summary>
+    [HttpGet("pins")]
+    public Task<IReadOnlyList<PinVerifier>> Pins() => auth.GetPinVerifiersAsync(User.UserId(), User.DeviceId()!.Value);
 
     /// <summary>Sistemas de la suite a los que el usuario puede entrar (para mostrar un selector de sistemas).</summary>
     [HttpGet("products")]

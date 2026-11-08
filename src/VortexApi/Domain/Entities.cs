@@ -68,6 +68,9 @@ public class User
     /// <summary>Idioma preferido (<c>es</c>, <c>en</c>, <c>pt</c>); null = el del país de la empresa. Viaja en la sesión.</summary>
     public string? Language { get; set; }
 
+    /// <summary>PIN de caja (<see cref="Security.PinHasher"/>): cambio rápido de operador y autorizaciones en el POS. Null = sin PIN.</summary>
+    public string? PinHash { get; set; }
+
     public int FailedLoginCount { get; set; }
     public DateTimeOffset? LockoutEnd { get; set; }
 

@@ -68,6 +68,18 @@ public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions opti
         return SendAsync<VortexUser>(request, ct)!;
     }
 
+    /// <summary>Fija el PIN de caja del usuario (4 a 8 dígitos) o lo quita con <c>null</c>. Pide la contraseña actual.</summary>
+    public Task SetPinAsync(string accessToken, string currentPassword, string? pin, CancellationToken ct = default)
+    {
+        var request = Authorized(HttpMethod.Put, "api/auth/me/pin", accessToken);
+        request.Content = JsonContent.Create(new { currentPassword, pin }, options: Json);
+        return SendAsync<object>(request, ct);
+    }
+
+    /// <summary>Verificadores de PIN de los miembros del sistema en la organización (ver <see cref="VortexPin"/>).</summary>
+    public Task<IReadOnlyList<VortexPinVerifier>> GetPinVerifiersAsync(string accessToken, CancellationToken ct = default) =>
+        SendAsync<IReadOnlyList<VortexPinVerifier>>(Authorized(HttpMethod.Get, "api/access/pins", accessToken), ct)!;
+
     /// <summary>JWKS con las llaves públicas; guárdelo junto al offline token para validar sin conexión.</summary>
     public Task<string> GetSigningKeysAsync(CancellationToken ct = default) =>
         http.GetStringAsync(".well-known/jwks.json", ct);
