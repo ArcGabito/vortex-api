@@ -327,6 +327,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `order.cancelled` | WMS, ERP, CRM | WMS, ERP, CRM |
 | `invoice.issued` | ERP | CRM, POS |
 | `payment.received` | ERP, POS | CRM, ERP |
+| `cash.deposited` | POS | ERP |
 | `credit_note.issued`, `debit_note.issued` | ERP | ERP (sus otros equipos) |
 | `invoice.voided` | ERP | ERP (sus otros equipos) |
 | `purchase_order.created` | ERP | WMS |
@@ -397,6 +398,11 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 //                        (ERP fase 3b: "shipmentId": "guid | null" cuando factura un despacho parcial del pedido)
 // payment.received     { "paymentId": "guid", "customerId": "guid | null", "invoiceId": "guid | null",
 //                        "saleId": "guid | null", "amount": 0, "currencyCode": "PEN", "method": "transfer" }
+//                        aditivo (ERP, tesorería): "accountId": "guid | null" (cuenta del ERP donde entró el cobro)
+
+// cash.deposited       { "depositId": "guid", "siteId": "guid", "amount": 0, "currencyCode": "PEN",
+//                        "reference": "nro. de operación | null", "bank": "nombre | null", "depositedOn": "2026-11-09",
+//                        "sessionId": "guid | null", "userName": "cajero | null" }   (efectivo de caja llevado al banco)
 
 // purchase_order.created { "purchaseOrderId": "guid", "supplierId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "unitCost" } ] }
 // purchase_order.cancelled { "purchaseOrderId": "guid", "number": "OC-0001", "reason": "... | null" }   (lo ya recibido queda; el resto no se espera)
