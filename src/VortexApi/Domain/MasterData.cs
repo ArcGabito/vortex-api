@@ -57,6 +57,9 @@ public class Party : MasterEntity
     /// <summary>Descuento habitual del cliente, en porcentaje (0 a 100).</summary>
     public decimal? DiscountPercent { get; set; }
 
+    /// <summary>Lista de precios del cliente (<see cref="PriceList"/>); gana a la de la tienda y al precio del artículo.</summary>
+    public Guid? PriceListId { get; set; }
+
     // Cuenta (la maneja el CRM): quién del equipo atiende al cliente.
     public Guid? OwnerUserId { get; set; }
     public string? OwnerName { get; set; }
@@ -116,6 +119,37 @@ public class ItemPresentation
     public decimal Factor { get; set; }
     public string? Barcode { get; set; }
     public string? UnitCode { get; set; }
+}
+
+/// <summary>
+/// Lista de precios compartida por POS, ERP y CRM. Se aplica a los clientes que la tienen (<c>Party.PriceListId</c>) y,
+/// en las tiendas de <see cref="SiteIds"/>, a toda venta sin lista propia del cliente. Los precios siguen el mismo
+/// criterio que el precio del artículo (con o sin impuesto, según cada sistema) y están en <see cref="CurrencyCode"/>.
+/// Un artículo sin línea en la lista se vende a su precio de siempre.
+/// </summary>
+public class PriceList : MasterEntity
+{
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string CurrencyCode { get; set; } = "PEN";
+
+    /// <summary>Vigencia (inclusive). Sin fechas, siempre vigente.</summary>
+    public DateOnly? ValidFrom { get; set; }
+    public DateOnly? ValidTo { get; set; }
+
+    /// <summary>Tiendas donde es la lista por defecto (vacío: ninguna; solo para los clientes que la tienen).</summary>
+    public List<Guid> SiteIds { get; set; } = [];
+
+    public bool IsActive { get; set; } = true;
+    public List<PriceListLine> Lines { get; set; } = [];
+}
+
+/// <summary>Precio de un artículo en la lista desde una cantidad (escalas: 1 a 11 a 10, desde 12 a 9.50).</summary>
+public class PriceListLine
+{
+    public Guid ItemId { get; set; }
+    public decimal Price { get; set; }
+    public decimal MinQuantity { get; set; } = 1;
 }
 
 public enum SiteKind
@@ -221,6 +255,7 @@ public static class MasterEntityTypes
     public const string Site = "site";
     public const string Company = "company";
     public const string ExchangeRate = "exchange_rate";
+    public const string PriceList = "price_list";
 
-    public static readonly IReadOnlySet<string> All = new HashSet<string> { Party, Item, Site, Company, ExchangeRate };
+    public static readonly IReadOnlySet<string> All = new HashSet<string> { Party, Item, Site, Company, ExchangeRate, PriceList };
 }

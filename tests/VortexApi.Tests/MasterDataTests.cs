@@ -176,6 +176,51 @@ public sealed class MasterDataTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Price_lists_resolve_by_customer_then_store_with_quantity_breaks()
+    {
+        var coffee = (await _erp.PostOkAsync("api/master/items", new { sku = "cafe-pl", name = "Café", price = 20m })).GetProperty("id").GetGuid();
+        var sugar = (await _erp.PostOkAsync("api/master/items", new { sku = "azucar-pl", name = "Azúcar", price = 5m })).GetProperty("id").GetGuid();
+        var store = Guid.NewGuid();
+        var wholesale = await _erp.PostOkAsync("api/master/price-lists", new
+        {
+            code = "mayorista", name = "Mayorista", currencyCode = "pen",
+            lines = new[] { new { itemId = coffee, price = 18m, minQuantity = 1m }, new { itemId = coffee, price = 16.5m, minQuantity = 12m } },
+        });
+        Assert.Equal("MAYORISTA", wholesale.GetProperty("code").GetString());
+        var storeList = await _erp.PostOkAsync("api/master/price-lists", new
+        {
+            code = "tienda-sur", name = "Tienda Sur", currencyCode = "PEN", siteIds = new[] { store },
+            validFrom = "2026-11-01", lines = new[] { new { itemId = sugar, price = 4.8m } },
+        });
+
+        // El cliente lleva su lista en el bloque de condiciones comerciales.
+        var listId = wholesale.GetProperty("id").GetGuid();
+        var party = await _erp.PostOkAsync("api/master/parties", new { name = "Bodega Sur", credit = new { priceListId = listId } });
+        Assert.Equal(listId, party.GetProperty("credit").GetProperty("priceListId").GetGuid());
+        var unknown = await _erp.PostAsJsonAsync("api/master/parties", new { name = "X", credit = new { priceListId = Guid.NewGuid() } });
+        Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+
+        // Errores: código repetido, artículo inexistente, dos precios para la misma cantidad.
+        Assert.Equal(HttpStatusCode.Conflict, (await _pos.PostAsJsonAsync("api/master/price-lists", new { code = "MAYORISTA", name = "Otra", currencyCode = "PEN" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _pos.PostAsJsonAsync("api/master/price-lists",
+            new { code = "x1", name = "X", currencyCode = "PEN", lines = new[] { new { itemId = Guid.NewGuid(), price = 1m } } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _pos.PostAsJsonAsync("api/master/price-lists",
+            new { code = "x2", name = "X", currencyCode = "PEN", lines = new[] { new { itemId = coffee, price = 1m }, new { itemId = coffee, price = 2m } } })).StatusCode);
+
+        // Llegan por el feed y el SDK resuelve: cliente > tienda > artículo, con escalas.
+        var feed = await GetFeedAsync(_pos, 0, types: "price_list");
+        var lists = feed.GetProperty("changes").EnumerateArray()
+            .Select(c => c.GetProperty("data").Deserialize<VortexPriceList>(VortexJson.Options)!).ToList();
+        Assert.Equal(2, lists.Count);
+        var today = new DateOnly(2026, 11, 8);
+        var forCustomer = VortexPriceLists.Choose(lists, listId, store, today)!;
+        Assert.Equal((18m, 16.5m, (decimal?)null), (forCustomer.PriceFor(coffee, 2)!.Value, forCustomer.PriceFor(coffee, 12)!.Value, forCustomer.PriceFor(sugar)));
+        Assert.Equal(4.8m, VortexPriceLists.Choose(lists, null, store, today)!.PriceFor(sugar, 0.5m));
+        Assert.Null(VortexPriceLists.Choose(lists, null, store, new DateOnly(2026, 10, 31)));   // aún no vigente
+        Assert.Equal(storeList.GetProperty("id").GetGuid(), VortexPriceLists.Choose(lists, Guid.NewGuid(), store, today)!.Id);
+    }
+
+    [Fact]
     public async Task Item_presentations_are_found_by_any_barcode_and_reach_the_SDK()
     {
         var item = await _erp.PostOkAsync("api/master/items", new

@@ -8,6 +8,10 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Listas de precios como dato maestro (`price_list`):** compartidas por POS, ERP y CRM, con moneda, vigencia, tiendas
+  donde rigen por defecto y escalas por cantidad (`/api/master/price-lists`). El cliente lleva la suya en
+  `credit.priceListId`. SDK: `OnPriceLists`, `VortexPriceList.PriceFor` y `VortexPriceLists.Choose` (cliente, tienda o
+  precio del artículo). Migración `PriceLists`.
 - **Condiciones comerciales y responsable del cliente en `party`:** bloques opcionales `credit` (plazo de pago en días,
   límite de crédito en la moneda de la empresa y descuento habitual; los maneja el ERP) y `account` (usuario
   responsable; lo maneja el CRM). En un PUT, el bloque que no se manda queda como estaba, así los sistemas que no los

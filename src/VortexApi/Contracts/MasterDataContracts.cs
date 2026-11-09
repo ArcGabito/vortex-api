@@ -40,10 +40,12 @@ public sealed record PartyRequest(
 /// <param name="PaymentTermDays">Días de plazo para pagar (0 = contado).</param>
 /// <param name="CreditLimit">Crédito máximo en la moneda de la empresa (null = sin límite).</param>
 /// <param name="DiscountPercent">Descuento habitual del cliente (0 a 100).</param>
+/// <param name="PriceListId">Lista de precios del cliente (gana a la de la tienda y al precio del artículo).</param>
 public sealed record PartyCreditDto(
     [Range(0, 365)] int? PaymentTermDays = null,
     [Range(0, 999_999_999)] decimal? CreditLimit = null,
-    [Range(0, 100)] decimal? DiscountPercent = null);
+    [Range(0, 100)] decimal? DiscountPercent = null,
+    Guid? PriceListId = null);
 
 /// <summary>Quién del equipo atiende al cliente (lo maneja el CRM). En un PUT, si no se manda, queda como estaba.</summary>
 public sealed record PartyAccountDto(Guid? OwnerUserId = null, [MaxLength(200)] string? OwnerName = null);
@@ -135,3 +137,21 @@ public sealed record ChangeDto(
 /// si <see cref="HasMore"/> es true, consulte de nuevo de inmediato.
 /// </summary>
 public sealed record ChangeFeedResponse(IReadOnlyList<ChangeDto> Changes, long NextCursor, bool HasMore);
+
+/// <summary>Alta o cambio de una lista de precios (se manda completa: sus líneas reemplazan a las anteriores).</summary>
+public sealed record PriceListRequest(
+    [Required, MaxLength(20)] string Code,
+    [Required, MaxLength(200)] string Name,
+    [Required, StringLength(3, MinimumLength = 3)] string CurrencyCode,
+    DateOnly? ValidFrom = null,
+    DateOnly? ValidTo = null,
+    [MaxLength(200)] List<Guid>? SiteIds = null,
+    bool IsActive = true,
+    [MaxLength(5000)] List<PriceListLineDto>? Lines = null);
+
+/// <param name="MinQuantity">Desde qué cantidad (en la unidad base) rige este precio; 1 si no hay escalas.</param>
+public sealed record PriceListLineDto(Guid ItemId, [Range(0, 999_999_999)] decimal Price, [Range(0, 999_999_999)] decimal MinQuantity = 1);
+
+public sealed record PriceListDto(
+    Guid Id, string Code, string Name, string CurrencyCode, DateOnly? ValidFrom, DateOnly? ValidTo, IReadOnlyList<Guid> SiteIds,
+    bool IsActive, IReadOnlyList<PriceListLineDto> Lines, MasterMeta Meta);

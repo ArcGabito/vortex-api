@@ -237,6 +237,7 @@ autorice una anulación en la caja de otro.
 | Sedes, tiendas, almacenes (`site`) | Hub | Ídem. |
 | Datos de la empresa (`company`) | Hub | Solo lectura (lo edita el OrgAdmin). |
 | Tipos de cambio (`exchange_rate`) | Hub | Uno por par de monedas y día (`/api/master/exchange-rates`), con compra y venta opcionales. Copia local con `OnExchangeRates`; el vigente en una fecha es el de ese día o el último anterior (`GET …/latest?from=USD&to=PEN&date=`, `GetExchangeRateAsync`). `VortexExchangeRate.Convert` y `ConvertBack` convierten; redondear con `Currencies`. Lo carga el ERP o el OrgAdmin. |
+| Listas de precios (`price_list`) | Hub | Código, nombre, moneda, vigencia opcional, tiendas donde es la lista por defecto (`siteIds`) y líneas `{ itemId, price, minQuantity }` con escalas por cantidad (`/api/master/price-lists`; se manda completa). El cliente lleva la suya en `credit.priceListId`. Precio de venta: la lista del cliente, si no la de la tienda, si no el precio del artículo; con la copia local (`OnPriceLists`) `VortexPriceLists.Choose(listas, credit.PriceListId, sede, fecha)` elige la lista y `PriceFor(itemId, cantidad)` da el precio de la escala (null: precio del artículo). Mismo criterio de impuesto que el precio del artículo. |
 | Ventas, facturas, stock, pedidos, oportunidades, asientos… | **El sistema** | En su propia base. Lo que otros sistemas necesitan saber se publica como **evento**. |
 
 Reglas:
@@ -246,7 +247,7 @@ Reglas:
    sincronización, aunque ahora no haya red.
 2. **Referenciar siempre por el Id del hub** (`customerId`, `itemId`, `siteId`), nunca por un Id local
    autoincremental. Así, si la empresa reemplaza el CRM por el ERP, las referencias siguen siendo válidas.
-3. **La copia local se actualiza desde el feed** (`OnParties`, `OnItems`, `OnSites`, `OnCompany`, `OnExchangeRates`), no al
+3. **La copia local se actualiza desde el feed** (`OnParties`, `OnItems`, `OnSites`, `OnCompany`, `OnExchangeRates`, `OnPriceLists`), no al
    responder una escritura. Los handlers aplican por Id y versión y deben ser idempotentes.
 4. **Validaciones del hub**: RUC de 11 dígitos, DNI de 8; documento, SKU y código de sede únicos por
    organización. Antes de crear un cliente, buscarlo: `GET /api/master/parties?documentNumber=…`.
@@ -337,7 +338,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `wms.record.upserted` | WMS | WMS (sus otros equipos) |
 | `stock.relocated` | WMS | WMS (sus otros equipos) |
 | `pos.record.upserted` | POS | POS (sus otras cajas) |
-| `master.{party,item,site,company,exchange_rate}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
+| `master.{party,item,site,company,exchange_rate,price_list}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 
 ### Contenido de los eventos (versión 1)
 
