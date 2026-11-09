@@ -27,6 +27,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<IntegrationClient> IntegrationClients => Set<IntegrationClient>();
+    public DbSet<PublicLink> PublicLinks => Set<PublicLink>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -275,6 +276,21 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.SubjectId).HasMaxLength(100);
             e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Category, x.Sequence });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<PublicLink>(e =>
+        {
+            e.Property(x => x.Product).HasMaxLength(16);
+            e.Property(x => x.DocumentType).HasMaxLength(50);
+            e.Property(x => x.DocumentNumber).HasMaxLength(64);
+            e.Property(x => x.Language).HasMaxLength(5);
+            e.Property(x => x.SignerName).HasMaxLength(200);
+            e.Property(x => x.SignerEmail).HasMaxLength(200);
+            e.Property(x => x.Comment).HasMaxLength(1000);
+            e.Property(x => x.ResponderIp).HasMaxLength(64);
+            e.Property(x => x.ResponderUserAgent).HasMaxLength(300);
+            e.HasIndex(x => new { x.OrganizationId, x.Product, x.DocumentType, x.DocumentId }).IsUnique();
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         });
 

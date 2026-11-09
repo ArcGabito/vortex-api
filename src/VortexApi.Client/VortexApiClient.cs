@@ -155,6 +155,42 @@ public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions opti
         return SendAsync<IReadOnlyList<VortexPublishResult>>(request, ct)!;
     }
 
+    // ---------- Enlaces públicos ----------
+
+    /// <summary>
+    /// Crea el enlace público del documento (o actualiza su copia y vencimiento si ya existe; la URL no cambia). Si el
+    /// cliente ya respondió, devuelve el enlace tal como quedó.
+    /// </summary>
+    public Task<VortexPublicLink> CreatePublicLinkAsync(string accessToken, VortexPublicLinkRequest link, CancellationToken ct = default)
+    {
+        var request = Authorized(HttpMethod.Post, "api/public-links", accessToken);
+        request.Content = JsonContent.Create(link, options: Json);
+        return SendAsync<VortexPublicLink>(request, ct)!;
+    }
+
+    /// <summary>El enlace con su estado y, si el cliente respondió, su firma. Null si no existe.</summary>
+    public async Task<VortexPublicLink?> GetPublicLinkAsync(string accessToken, Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            return await SendAsync<VortexPublicLink>(Authorized(HttpMethod.Get, $"api/public-links/{id}", accessToken), ct);
+        }
+        catch (VortexApiException ex) when (ex.StatusCode == 404)
+        {
+            return null;
+        }
+    }
+
+    public Task<IReadOnlyList<VortexPublicLink>> GetPublicLinksAsync(string accessToken, string? documentType = null, Guid? documentId = null,
+        CancellationToken ct = default) =>
+        SendAsync<IReadOnlyList<VortexPublicLink>>(Authorized(HttpMethod.Get,
+            $"api/public-links?documentType={Uri.EscapeDataString(documentType ?? "")}" + (documentId is { } d ? $"&documentId={d}" : ""),
+            accessToken), ct)!;
+
+    /// <summary>Retira el enlace: deja de aceptar respuestas (error <c>link_already_responded</c> si el cliente ya respondió).</summary>
+    public async Task RevokePublicLinkAsync(string accessToken, Guid id, CancellationToken ct = default) =>
+        await SendAsync<object>(Authorized(HttpMethod.Delete, $"api/public-links/{id}", accessToken), ct);
+
     // ---------- Internos ----------
 
     private static string TypesQuery(IEnumerable<string>? types)

@@ -24,6 +24,7 @@ builder.Services.AddDbContext<VortexDbContext>(o =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<SigningKeyProvider>();
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddSingleton<PublicLinkTokens>();
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<AuthService>();
@@ -43,7 +44,8 @@ builder.Services.AddAuthorization(Policies.Configure);
 
 builder.Services.AddRateLimiter(o => RateLimitPolicies.Configure(o,
     config.GetValue("RateLimiting:AuthPermitsPerMinute", 20),
-    config.GetValue("RateLimiting:IntegrationPermitsPerMinute", 600)));
+    config.GetValue("RateLimiting:IntegrationPermitsPerMinute", 600),
+    config.GetValue("RateLimiting:PublicPermitsPerMinute", 60)));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();

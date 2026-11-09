@@ -147,6 +147,8 @@ public static class EventCatalog
         new("stock.relocated", "Traslado interno entre ubicaciones de una sede (no cambia el stock de la sede).", ["WMS"], ["WMS"]),
         new("erp.record.upserted", "Replicación interna del ERP entre los equipos de una organización (solicitudes de compra, facturas y pagos a proveedores, ajustes de compras).", ["ERP"], ["ERP"]),
         new("pos.record.upserted", "Replicación interna del POS entre las cajas de una organización (configuración de cada tienda: ticket, cierre ciego, cajón).", ["POS"], ["POS"]),
+        new("hub.public_link.accepted", "El cliente aceptó con su firma un documento desde su enlace público (p. ej. una cotización): lo consume el sistema dueño del documento.", ["HUB"], ["CRM"]),
+        new("hub.public_link.rejected", "El cliente rechazó un documento desde su enlace público.", ["HUB"], ["CRM"]),
         new("master.party.created|updated|deleted", "Cambio en clientes/proveedores (datos maestros).", ["HUB"], ["ERP", "CRM", "POS"]),
         new("master.item.created|updated|deleted", "Cambio en artículos (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),
         new("master.site.created|updated|deleted", "Cambio en sedes/almacenes (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),
