@@ -18,7 +18,47 @@ public sealed record VortexParty(
     VortexMasterMeta Meta, VortexPartyCredit? Credit = null, VortexPartyAccount? Account = null);
 
 /// <summary>Condiciones comerciales del cliente (las maneja el ERP): plazo, límite de crédito en la moneda de la empresa y descuento.</summary>
-public sealed record VortexPartyCredit(int? PaymentTermDays = null, decimal? CreditLimit = null, decimal? DiscountPercent = null);
+public sealed record VortexPartyCredit(int? PaymentTermDays = null, decimal? CreditLimit = null, decimal? DiscountPercent = null,
+    Guid? PriceListId = null);
+
+/// <summary>
+/// Lista de precios compartida por POS, ERP y CRM. Precio de un artículo: la lista del cliente (<c>credit.priceListId</c>),
+/// si no la de la tienda (<see cref="SiteIds"/>), si no el precio del artículo. Ver <see cref="PriceFor"/> y
+/// <see cref="VortexPriceLists.Choose"/>.
+/// </summary>
+public sealed record VortexPriceList(
+    Guid Id, string Code, string Name, string CurrencyCode, DateOnly? ValidFrom, DateOnly? ValidTo, IReadOnlyList<Guid> SiteIds,
+    bool IsActive, IReadOnlyList<VortexPriceListLine> Lines, VortexMasterMeta Meta)
+{
+    /// <summary>Activa y dentro de su vigencia en <paramref name="date"/>.</summary>
+    public bool AppliesOn(DateOnly date) => IsActive && Meta.DeletedAt is null && (ValidFrom is null || ValidFrom <= date) &&
+                                             (ValidTo is null || date <= ValidTo);
+
+    /// <summary>
+    /// Precio del artículo para <paramref name="quantity"/> (la escala con la mayor cantidad mínima que no la supera), o
+    /// null si el artículo no está en la lista.
+    /// </summary>
+    /// <remarks>Las cantidades menores a 1 (0.5 kg) toman la escala "desde 1".</remarks>
+    public decimal? PriceFor(Guid itemId, decimal quantity = 1) =>
+        Lines.Where(l => l.ItemId == itemId && l.MinQuantity <= Math.Max(quantity, 1)).OrderByDescending(l => l.MinQuantity)
+            .Select(l => (decimal?)l.Price).FirstOrDefault();
+}
+
+public sealed record VortexPriceListLine(Guid ItemId, decimal Price, decimal MinQuantity = 1);
+
+public static class VortexPriceLists
+{
+    /// <summary>
+    /// La lista que rige una venta: la del cliente si aplica en la fecha; si no, la primera (por código) de la tienda que
+    /// aplique. Null: precio del artículo.
+    /// </summary>
+    public static VortexPriceList? Choose(IEnumerable<VortexPriceList> lists, Guid? customerListId, Guid? siteId, DateOnly date)
+    {
+        var all = lists.Where(l => l.AppliesOn(date)).ToList();
+        return all.FirstOrDefault(l => l.Id == customerListId)
+               ?? (siteId is { } site ? all.Where(l => l.SiteIds.Contains(site)).OrderBy(l => l.Code, StringComparer.Ordinal).FirstOrDefault() : null);
+    }
+}
 
 /// <summary>Quién del equipo atiende al cliente (lo maneja el CRM).</summary>
 public sealed record VortexPartyAccount(Guid? OwnerUserId = null, string? OwnerName = null);
@@ -118,6 +158,7 @@ public static class VortexMasterResource
     public const string Items = "items";
     public const string Sites = "sites";
     public const string ExchangeRates = "exchange-rates";
+    public const string PriceLists = "price-lists";
 
     /// <summary>Tipo de entidad en el feed (<c>party</c>, <c>item</c>, <c>site</c>, <c>exchange_rate</c>) para una ruta.</summary>
     public static string EntityTypeOf(string resource) => resource switch
@@ -126,6 +167,7 @@ public static class VortexMasterResource
         Items => "item",
         Sites => "site",
         ExchangeRates => "exchange_rate",
+        PriceLists => "price_list",
         _ => throw new ArgumentException($"Recurso desconocido: {resource}", nameof(resource)),
     };
 }

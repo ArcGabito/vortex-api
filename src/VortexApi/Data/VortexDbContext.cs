@@ -19,6 +19,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Site> Sites => Set<Site>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
     public DbSet<CompanyProfile> CompanyProfiles => Set<CompanyProfile>();
     public DbSet<ChangeEntry> ChangeEntries => Set<ChangeEntry>();
 
@@ -216,6 +217,21 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.SellRate).HasPrecision(18, 8);
             e.Property(x => x.Source).HasMaxLength(20);
             e.HasIndex(x => new { x.OrganizationId, x.FromCurrency, x.ToCurrency, x.Date }).IsUnique().HasFilter(NotDeleted);
+        });
+
+        b.Entity<PriceList>(e =>
+        {
+            MasterEntity(e);
+            e.Property(x => x.Code).HasMaxLength(20);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.CurrencyCode).HasMaxLength(3);
+            e.HasIndex(x => new { x.OrganizationId, x.Code }).IsUnique().HasFilter(NotDeleted);
+            e.OwnsMany(x => x.Lines, l =>
+            {
+                l.ToJson();
+                l.Property(x => x.Price).HasPrecision(18, 6);
+                l.Property(x => x.MinQuantity).HasPrecision(18, 6);
+            });
         });
 
         b.Entity<CompanyProfile>(e =>

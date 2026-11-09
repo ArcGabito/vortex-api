@@ -58,8 +58,8 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
         p.Notes = Clean(r.Notes);
         p.IsActive = r.IsActive;
         if (r.Credit is { } credit)
-            (p.PaymentTermDays, p.CreditLimit, p.DiscountPercent) = (credit.PaymentTermDays, credit.CreditLimit,
-                credit.DiscountPercent is 0 ? null : credit.DiscountPercent);
+            (p.PaymentTermDays, p.CreditLimit, p.DiscountPercent, p.PriceListId) = (credit.PaymentTermDays, credit.CreditLimit,
+                credit.DiscountPercent is 0 ? null : credit.DiscountPercent, credit.PriceListId);
         if (r.Account is { } account)
             (p.OwnerUserId, p.OwnerName) = (account.OwnerUserId, account.OwnerUserId is null ? null : Clean(account.OwnerName));
     }
@@ -72,6 +72,10 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
         var expectedDigits = p.DocumentType switch { "RUC" => 11, "DNI" => 8, _ => (int?)null };
         if (expectedDigits is { } digits && (p.DocumentNumber!.Length != digits || !p.DocumentNumber.All(char.IsAsciiDigit)))
             throw ApiException.BadRequest(ErrorCodes.InvalidDocument, $"El {p.DocumentType} debe tener {digits} dígitos.");
+
+        if (p.PriceListId is { } listId && !await Db.PriceLists.AsNoTracking()
+                .AnyAsync(l => l.OrganizationId == p.OrganizationId && l.Id == listId && l.DeletedAt == null))
+            throw ApiException.BadRequest(ErrorCodes.Validation, "La lista de precios del cliente no existe.");
 
         if (p.DocumentNumber is null)
             return;
@@ -90,9 +94,9 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
             ? null
             : new AddressDto(p.AddressLine, p.District, p.City, p.Region, p.PostalCode, p.CountryCode),
         p.Notes, p.IsActive, Meta(p),
-        p.PaymentTermDays is null && p.CreditLimit is null && p.DiscountPercent is null
+        p.PaymentTermDays is null && p.CreditLimit is null && p.DiscountPercent is null && p.PriceListId is null
             ? null
-            : new PartyCreditDto(p.PaymentTermDays, p.CreditLimit, p.DiscountPercent),
+            : new PartyCreditDto(p.PaymentTermDays, p.CreditLimit, p.DiscountPercent, p.PriceListId),
         p.OwnerUserId is null ? null : new PartyAccountDto(p.OwnerUserId, p.OwnerName));
 
     private static string NormalizeDocument(string value) =>

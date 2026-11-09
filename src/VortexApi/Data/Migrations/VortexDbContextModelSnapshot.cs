@@ -717,6 +717,9 @@ namespace VortexApi.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<Guid?>("PriceListId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -743,6 +746,66 @@ namespace VortexApi.Data.Migrations
                         .HasFilter("[DeletedAt] IS NULL AND [DocumentNumber] IS NOT NULL");
 
                     b.ToTable("Parties");
+                });
+
+            modelBuilder.Entity("VortexApi.Domain.PriceList", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.PrimitiveCollection<string>("SiteIds")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateOnly?>("ValidFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ValidTo")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Code")
+                        .IsUnique()
+                        .HasFilter("[DeletedAt] IS NULL");
+
+                    b.HasIndex("OrganizationId", "UpdatedAt");
+
+                    b.ToTable("PriceLists");
                 });
 
             modelBuilder.Entity("VortexApi.Domain.Product", b =>
@@ -1227,6 +1290,44 @@ namespace VortexApi.Data.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("VortexApi.Domain.PriceList", b =>
+                {
+                    b.HasOne("VortexApi.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsMany("VortexApi.Domain.PriceListLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("PriceListId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAddOrUpdate();
+
+                            b1.Property<Guid>("ItemId");
+
+                            b1.Property<decimal>("MinQuantity")
+                                .HasPrecision(18, 6);
+
+                            b1.Property<decimal>("Price")
+                                .HasPrecision(18, 6);
+
+                            b1.HasKey("PriceListId", "__synthesizedOrdinal");
+
+                            b1.ToTable("PriceLists");
+
+                            b1
+                                .ToJson("Lines")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PriceListId");
+                        });
+
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("VortexApi.Domain.ProductMember", b =>
