@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Eventos `shipment.returned` y `goods.returned` (devoluciones de clientes y a proveedores desde el WMS, para las notas
+  del ERP) y `balance.moved` (libro de puntos y gift cards replicado entre las cajas del POS; el saldo es la suma).
 - Evento `cash.deposited`: el POS informa el efectivo de una caja depositado en el banco y la tesorería del ERP lo
   concilia con el extracto. `payment.received` admite `accountId` (cuenta del ERP donde entró el cobro).
 - **Enlaces públicos firmados:** un sistema comparte un documento con alguien sin usuario en el hub (el CRM, su
