@@ -330,12 +330,14 @@ Catálogo actual (`GET /api/events/catalog`):
 | `credit_note.issued`, `debit_note.issued` | ERP | ERP (sus otros equipos) |
 | `invoice.voided` | ERP | ERP (sus otros equipos) |
 | `purchase_order.created` | ERP | WMS |
+| `purchase_order.cancelled` | ERP | WMS, ERP (sus otros equipos) |
 | `goods.received` | WMS | ERP |
 | `receipt.cancelled` | WMS | WMS (sus otros equipos), ERP |
 | `stock.adjusted`, `stock.transferred` | WMS | ERP, POS |
 | `shipment.dispatched` | WMS | ERP, CRM |
 | `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
 | `wms.record.upserted` | WMS | WMS (sus otros equipos) |
+| `erp.record.upserted` | ERP | ERP (sus otros equipos) |
 | `stock.relocated` | WMS | WMS (sus otros equipos) |
 | `pos.record.upserted` | POS | POS (sus otras cajas) |
 | `master.{party,item,site,company,exchange_rate,price_list}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
@@ -374,6 +376,7 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 //                        "saleId": "guid | null", "amount": 0, "currencyCode": "PEN", "method": "transfer" }
 
 // purchase_order.created { "purchaseOrderId": "guid", "supplierId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "unitCost" } ] }
+// purchase_order.cancelled { "purchaseOrderId": "guid", "number": "OC-0001", "reason": "... | null" }   (lo ya recibido queda; el resto no se espera)
 // goods.received       { "receiptId": "guid", "purchaseOrderId": "guid | null", "siteId": "guid",
 //                        "lines": [ { "itemId", "quantity", "unitCost", "totalCost" } ] }   (costos: WMS desde su fase 1)
 //                        (WMS fase 3: cada línea puede llevar "lots": [ { "lotCode", "quantity", "expiresAt" } ] y "serials": [ "..." ])
