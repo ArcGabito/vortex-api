@@ -336,6 +336,9 @@ Catálogo actual (`GET /api/events/catalog`):
 | `receipt.cancelled` | WMS | WMS (sus otros equipos), ERP |
 | `stock.adjusted`, `stock.transferred` | WMS | ERP, POS |
 | `shipment.dispatched` | WMS | ERP, CRM |
+| `shipment.returned` | WMS | ERP, CRM |
+| `goods.returned` | WMS | ERP |
+| `balance.moved` | POS | POS (sus otras cajas), CRM |
 | `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
 | `wms.record.upserted` | WMS | WMS (sus otros equipos) |
 | `erp.record.upserted` | ERP | ERP (sus otros equipos) |
@@ -399,6 +402,15 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 // payment.received     { "paymentId": "guid", "customerId": "guid | null", "invoiceId": "guid | null",
 //                        "saleId": "guid | null", "amount": 0, "currencyCode": "PEN", "method": "transfer" }
 //                        aditivo (ERP, tesorería): "accountId": "guid | null" (cuenta del ERP donde entró el cobro)
+
+// shipment.returned    { "returnId": "guid", "number": "DEV-…", "orderId": "guid | null", "shipmentId": "guid | null",
+//                        "customerId": "guid | null", "siteId": "guid", "reason": "…",
+//                        "lines": [ { "itemId", "quantity", "disposition": "restock | quarantine | scrap", "lotCode": null } ] }
+// goods.returned       { "returnId": "guid", "number": "DVP-…", "purchaseOrderId": "guid | null", "supplierId": "guid",
+//                        "siteId": "guid", "reason": "…", "lines": [ { "itemId", "quantity", "unitCost": 0 } ] }
+// balance.moved        { "movementId": "guid", "kind": "points | gift_card", "accountId": "guid (cliente o gift card)",
+//                        "code": "código de la gift card | null", "customerId": "guid | null", "delta": 0 (+ suma, − gasta),
+//                        "saleId": "guid | null", "siteId": "guid", "reason": "…", "expiresOn": "2027-11-09 | null" }
 
 // cash.deposited       { "depositId": "guid", "siteId": "guid", "amount": 0, "currencyCode": "PEN",
 //                        "reference": "nro. de operación | null", "bank": "nombre | null", "depositedOn": "2026-11-09",
