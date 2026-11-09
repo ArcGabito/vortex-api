@@ -131,6 +131,7 @@ public static class EventCatalog
         new("order.cancelled", "Pedido cancelado antes de despacharse: libera la reserva de stock.", ["WMS", "ERP", "CRM"], ["WMS", "ERP", "CRM"]),
         new("invoice.issued", "Comprobante emitido.", ["ERP"], ["CRM", "POS"]),
         new("payment.received", "Cobro registrado.", ["ERP", "POS"], ["CRM", "ERP"]),
+        new("cash.deposited", "Efectivo de una caja depositado en el banco (lo concilia la tesorería del ERP).", ["POS"], ["ERP"]),
         new("credit_note.issued", "Nota de crédito vinculada a un comprobante (anulación, devolución, descuento, corrección): rebaja su saldo.", ["ERP"], ["ERP"]),
         new("debit_note.issued", "Nota de débito vinculada a un comprobante (intereses, aumento de valor, penalidad): suma a su saldo.", ["ERP"], ["ERP"]),
         new("invoice.voided", "Comprobante anulado por error, sin cobros ni notas: el pedido o la venta de caja quedan libres.", ["ERP"], ["ERP"]),

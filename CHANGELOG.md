@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Evento `cash.deposited`: el POS informa el efectivo de una caja depositado en el banco y la tesorería del ERP lo
+  concilia con el extracto. `payment.received` admite `accountId` (cuenta del ERP donde entró el cobro).
 - **Enlaces públicos firmados:** un sistema comparte un documento con alguien sin usuario en el hub (el CRM, su
   cotización) y este lo acepta con nombre y firma dibujada o lo rechaza en `/p/{token}` (página en es/en/pt, sin
   recursos externos, CSP estricta, límite por IP). Un enlace por documento (misma URL al pedirlo de nuevo), con
