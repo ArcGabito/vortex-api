@@ -135,6 +135,7 @@ public static class EventCatalog
         new("debit_note.issued", "Nota de débito vinculada a un comprobante (intereses, aumento de valor, penalidad): suma a su saldo.", ["ERP"], ["ERP"]),
         new("invoice.voided", "Comprobante anulado por error, sin cobros ni notas: el pedido o la venta de caja quedan libres.", ["ERP"], ["ERP"]),
         new("purchase_order.created", "Orden de compra a proveedor.", ["ERP"], ["WMS"]),
+        new("purchase_order.cancelled", "Orden de compra cancelada (ya no se espera la mercadería).", ["ERP"], ["WMS", "ERP"]),
         new("goods.received", "Mercadería recibida en almacén.", ["WMS"], ["ERP"]),
         new("receipt.cancelled", "Recepción esperada anulada en el almacén (la orden de compra ya no se espera).", ["WMS"], ["WMS", "ERP"]),
         new("stock.adjusted", "Ajuste de inventario.", ["WMS"], ["ERP", "POS"]),

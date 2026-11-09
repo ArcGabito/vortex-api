@@ -8,6 +8,7 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Evento `purchase_order.cancelled` en el catálogo (lo publica el ERP; lo consumen el WMS y los demás equipos del ERP).
 - **Listas de precios como dato maestro (`price_list`):** compartidas por POS, ERP y CRM, con moneda, vigencia, tiendas
   donde rigen por defecto y escalas por cantidad (`/api/master/price-lists`). El cliente lleva la suya en
   `credit.priceListId`. SDK: `OnPriceLists`, `VortexPriceList.PriceFor` y `VortexPriceLists.Choose` (cliente, tienda o
