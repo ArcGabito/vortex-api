@@ -145,6 +145,7 @@ public static class EventCatalog
         new("crm.record.deleted", "Registro propio del CRM eliminado en otro equipo de la organización.", ["CRM"], ["CRM"]),
         new("wms.record.upserted", "Replicación interna del WMS entre los equipos de una organización (ubicación y mínimo por artículo y sede, estado de lote, vida útil, mapa de ubicaciones).", ["WMS"], ["WMS"]),
         new("stock.relocated", "Traslado interno entre ubicaciones de una sede (no cambia el stock de la sede).", ["WMS"], ["WMS"]),
+        new("erp.record.upserted", "Replicación interna del ERP entre los equipos de una organización (solicitudes de compra, facturas y pagos a proveedores, ajustes de compras).", ["ERP"], ["ERP"]),
         new("pos.record.upserted", "Replicación interna del POS entre las cajas de una organización (configuración de cada tienda: ticket, cierre ciego, cajón).", ["POS"], ["POS"]),
         new("master.party.created|updated|deleted", "Cambio en clientes/proveedores (datos maestros).", ["HUB"], ["ERP", "CRM", "POS"]),
         new("master.item.created|updated|deleted", "Cambio en artículos (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),

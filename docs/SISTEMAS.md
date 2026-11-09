@@ -337,6 +337,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `shipment.dispatched` | WMS | ERP, CRM |
 | `crm.record.upserted`, `crm.record.deleted` | CRM | CRM (sus otros equipos) |
 | `wms.record.upserted` | WMS | WMS (sus otros equipos) |
+| `erp.record.upserted` | ERP | ERP (sus otros equipos) |
 | `stock.relocated` | WMS | WMS (sus otros equipos) |
 | `pos.record.upserted` | POS | POS (sus otras cajas) |
 | `master.{party,item,site,company,exchange_rate,price_list}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
