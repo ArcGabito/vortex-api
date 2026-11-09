@@ -55,6 +55,7 @@ public sealed class VortexApiFactory(IReadOnlyDictionary<string, string>? settin
         builder.UseSetting("Jwt:Issuer", Issuer);
         builder.UseSetting("Jwt:SigningKeyPem", SigningKeyPem);
         builder.UseSetting("RateLimiting:AuthPermitsPerMinute", "10000");
+        builder.UseSetting("RateLimiting:PublicPermitsPerMinute", "10000");
         builder.UseSetting("Webhooks:DispatcherEnabled", "false");
         builder.UseSetting("Webhooks:MaxAttempts", "3");
         builder.UseSetting("Seed:AdminEmail", AdminEmail);

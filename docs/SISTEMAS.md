@@ -341,6 +341,29 @@ Catálogo actual (`GET /api/events/catalog`):
 | `stock.relocated` | WMS | WMS (sus otros equipos) |
 | `pos.record.upserted` | POS | POS (sus otras cajas) |
 | `master.{party,item,site,company,exchange_rate,price_list}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
+| `hub.public_link.accepted`, `hub.public_link.rejected` | Hub | El sistema dueño del documento (CRM) |
+
+### Enlaces públicos firmados (aceptación del cliente)
+
+Para que alguien de fuera (un cliente, sin usuario en el hub) vea un documento y lo acepte con su firma o lo rechace:
+
+1. El sistema crea el enlace con una copia del documento tal como se envió:
+   `CreatePublicLinkAsync(token, new VortexPublicLinkRequest("quote", cotizacionId, venceEn, documento, idioma))`
+   (`POST /api/public-links`). Hay un enlace por documento: pedirlo otra vez (otro equipo, o tras editar) actualiza la
+   copia y el vencimiento y devuelve **la misma URL**; si el cliente ya respondió, lo devuelve tal como quedó.
+2. Comparte `link.Url` (`https://<hub>/p/<token>`) por WhatsApp o correo. La página está en el idioma del enlace, muestra
+   el documento (líneas, opcionales aparte, totales, condiciones) y pide nombre, firma dibujada y la casilla de
+   aceptación; registra fecha, IP y navegador. El token es el Id del enlace firmado con HMAC: no se adivina, y uno
+   alterado responde 404. `PublicLinks:BaseUrl` fija la dirección pública del hub; `PublicLinks:Secret`, la llave
+   (sin ella se deriva de la llave de firma de tokens). Límite por IP: `RateLimiting:PublicPermitsPerMinute` (60).
+3. La respuesta llega como evento del hub (`OnEvent(VortexHubEvents.PublicLinkResponses, …)`) con
+   `VortexPublicLinkResponded` (`linkId`, `product`, `documentType`, `documentId`, `documentNumber`, `response`
+   `accepted`|`rejected`, `respondedAt`, `signerName`, `signerEmail`, `comment`). La firma (PNG) se pide con
+   `GetPublicLinkAsync(token, linkId)`. Lo reciben todos los equipos del sistema: el que lo aplica debe ser idempotente.
+4. Con una versión nueva del documento, retire el enlace anterior (`RevokePublicLinkAsync`): deja de aceptar
+   respuestas. Un enlace vencido (`expiresAt`, como máximo a un año) tampoco las acepta (`link_expired`).
+
+Cada sistema solo ve y administra sus enlaces (`product` del token).
 
 ### Contenido de los eventos (versión 1)
 

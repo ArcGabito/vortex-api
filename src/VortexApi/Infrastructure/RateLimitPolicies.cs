@@ -8,9 +8,13 @@ public static class RateLimitPolicies
 {
     public const string Auth = "auth";
 
+    /// <summary>Enlaces públicos (sin autenticación): por IP, para que no se puedan probar tokens en masa.</summary>
+    public const string Public = "public";
+
     /// <param name="authPermitsPerMinute">Límite por IP para endpoints de autenticación (fuerza bruta, relleno de credenciales).</param>
     /// <param name="integrationPermitsPerMinute">Límite global por aplicación de integración, para que una integración mal hecha no sature el hub.</param>
-    public static void Configure(RateLimiterOptions options, int authPermitsPerMinute, int integrationPermitsPerMinute)
+    public static void Configure(RateLimiterOptions options, int authPermitsPerMinute, int integrationPermitsPerMinute,
+        int publicPermitsPerMinute = 60)
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
         options.OnRejected = (context, _) =>
@@ -25,6 +29,15 @@ public static class RateLimitPolicies
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = authPermitsPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
+        options.AddPolicy(Public, context => RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = publicPermitsPerMinute,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));

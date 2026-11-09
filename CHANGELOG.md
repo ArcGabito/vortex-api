@@ -8,6 +8,13 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Enlaces públicos firmados:** un sistema comparte un documento con alguien sin usuario en el hub (el CRM, su
+  cotización) y este lo acepta con nombre y firma dibujada o lo rechaza en `/p/{token}` (página en es/en/pt, sin
+  recursos externos, CSP estricta, límite por IP). Un enlace por documento (misma URL al pedirlo de nuevo), con
+  vencimiento y retiro. La respuesta llega como `hub.public_link.accepted|rejected`. API `api/public-links` (sistemas) y
+  `api/public/links/{token}` (cliente). SDK: `CreatePublicLinkAsync`, `GetPublicLinkAsync`, `GetPublicLinksAsync`,
+  `RevokePublicLinkAsync`, `VortexHubEvents`. Configuración `PublicLinks:BaseUrl` y `PublicLinks:Secret`. Migración
+  `PublicLinks`.
 - Eventos `purchase_order.cancelled` (lo publica el ERP; lo consumen el WMS y los demás equipos del ERP) y
   `erp.record.upserted` (replicación interna del ERP: solicitudes de compra, facturas y pagos a proveedores).
 - **Listas de precios como dato maestro (`price_list`):** compartidas por POS, ERP y CRM, con moneda, vigencia, tiendas

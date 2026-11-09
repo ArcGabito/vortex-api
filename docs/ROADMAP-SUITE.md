@@ -80,5 +80,7 @@ listas para tiendas (Microsoft Store, Google Play, App Store).
 - ~~**Artículo de almacén y venta**~~: hecho (presentaciones, varios códigos, unidad UN/ECE, peso, lote/serie; 2026-11).
 - ~~**Idioma preferido del usuario**~~: hecho (`User.Language`, `SetLanguageAsync`, 2026-11).
 - ~~**Sedes por usuario**~~: hecho (`Access.SiteIds`, 2026-11).
+- ~~**Enlace público firmado**~~: hecho (`POST /api/public-links`, página `/p/{token}`, `hub.public_link.accepted|rejected`,
+  `CreatePublicLinkAsync`; 2026-11). Lo usa el CRM para que el cliente acepte la cotización con su firma.
 - **Eventos de cancelación** para replicar estados: `order.cancelled` e `invoice.voided` hechos (2026-11), con las notas
   `credit_note.issued` y `debit_note.issued`; falta `purchase_order.cancelled`.
