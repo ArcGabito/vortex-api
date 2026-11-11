@@ -45,7 +45,6 @@ public static class PeruUbl
         var result = new List<PeruLine>();
         foreach (var l in lines)
         {
-            var extension = Round(l.Quantity * l.UnitValue);
             var (code, id, name, type, taxed) = l.TaxCategory switch
             {
                 FiscalTaxCategories.Taxed => ("10", "1000", "IGV", "VAT", true),
@@ -53,9 +52,24 @@ public static class PeruUbl
                 FiscalTaxCategories.Unaffected => ("30", "9998", "INA", "FRE", false),
                 _ => ("40", "9995", "EXP", "FRE", false),
             };
-            var tax = taxed ? Round(extension * l.TaxRate) : 0;
-            var price = taxed ? Math.Round(l.UnitValue * (1 + l.TaxRate), 2, MidpointRounding.AwayFromZero) : Math.Round(l.UnitValue, 2, MidpointRounding.AwayFromZero);
-            result.Add(new PeruLine(l, extension, tax, price, code, id, name, type));
+            var rate = taxed ? l.TaxRate : 0;
+            decimal extension, tax, price;
+            var source = l;
+            if (l.Total is { } total)
+            {
+                // Desde lo cobrado: valor de venta = total / (1 + tasa) y el impuesto es la diferencia.
+                extension = Round(total / (1 + rate));
+                tax = total - extension;
+                price = l.Quantity > 0 ? Math.Round(total / l.Quantity, 10, MidpointRounding.AwayFromZero) : 0;
+                source = l with { UnitValue = l.Quantity > 0 ? Math.Round(extension / l.Quantity, 10, MidpointRounding.AwayFromZero) : 0 };
+            }
+            else
+            {
+                extension = Round(l.Quantity * l.UnitValue);
+                tax = Round(extension * rate);
+                price = Math.Round(l.UnitValue * (1 + rate), 2, MidpointRounding.AwayFromZero);
+            }
+            result.Add(new PeruLine(source, extension, tax, price, code, id, name, type));
         }
         decimal Sum(string code) => result.Where(r => r.AffectationCode == code).Sum(r => r.LineExtension);
         var totals = new PeruTotals(Sum("10"), Sum("20"), Sum("30"), Sum("40"), result.Sum(r => r.Tax), result.Sum(r => r.LineExtension),
