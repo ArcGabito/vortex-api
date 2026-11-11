@@ -390,7 +390,9 @@ El sistema pide el comprobante con `IssueFiscalDocumentAsync(token, new VortexFi
    moneda, cliente (`docType` del catálogo 6: 6 RUC, 1 DNI, `-` sin documento) y líneas con valor unitario **sin
    impuesto**, unidad UN/ECE, categoría (`taxed`, `exempt`, `unaffected`, `export`) y tasa (0.18). Opcionales: forma de
    pago (al crédito con cuotas, solo facturas), `reference` en las notas (comprobante y motivo del catálogo 9 o 10) y
-   observación. El hub calcula valor de venta, IGV por línea y totales.
+   observación. El hub calcula valor de venta, IGV por línea y totales. Si la línea trae `total` (importe con impuesto
+   y descuentos, como lo cobra una caja con precios con IGV), el valor de venta sale de él (`total / (1 + tasa)`, el
+   IGV es la diferencia) y el total del comprobante es exactamente lo cobrado.
 2. Se valida al instante (RUC con dígito verificador, factura a cliente con RUC, boleta desde S/ 700 con documento,
    motivos de nota…) y responde **202** con el comprobante en `Pending`. Con el mismo `sourceId` devuelve el que ya
    existe: se puede reintentar desde la cola sin conexión. Otro comprobante con el mismo tipo, serie y número:

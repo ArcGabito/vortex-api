@@ -49,6 +49,21 @@ public sealed class FiscalPeruTests
         Assert.Equal(new PeruTotals(185m, 50m, 0, 0, 33.30m, 235m, 268.30m), totals);
     }
 
+    [Fact]
+    public void Con_el_total_cobrado_el_comprobante_cuadra_al_centimo_con_la_caja()
+    {
+        // Precios con IGV de la caja: 3 x 3.50 y 1 x 10.00 = 20.50 cobrados.
+        var (lines, totals) = PeruUbl.Compute([
+            new FiscalLine("Pan", 3, "NIU", 0, FiscalTaxCategories.Taxed, 0.18m, Total: 10.50m),
+            new FiscalLine("Leche", 1, "NIU", 0, FiscalTaxCategories.Taxed, 0.18m, Total: 10.00m),
+            new FiscalLine("Libro", 1, "NIU", 0, FiscalTaxCategories.Exempt, Total: 25m),
+        ]);
+        Assert.Equal((8.90m, 1.60m, 3.5m), (lines[0].LineExtension, lines[0].Tax, lines[0].UnitPrice));
+        Assert.Equal((8.47m, 1.53m), (lines[1].LineExtension, lines[1].Tax));
+        Assert.Equal(2.9666666667m, lines[0].Source.UnitValue);
+        Assert.Equal((17.37m, 25m, 3.13m, 45.50m), (totals.Taxed, totals.Exempt, totals.Tax, totals.Total));
+    }
+
     [Theory]
     [InlineData(268.30, "PEN", "DOSCIENTOS SESENTA Y OCHO CON 30/100 SOLES")]
     [InlineData(100, "PEN", "CIEN CON 00/100 SOLES")]

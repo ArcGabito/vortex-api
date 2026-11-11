@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Línea fiscal con `total` (importe con impuesto y descuentos, lo cobrado): el hub deriva el valor de venta y el IGV, así
+  el comprobante de una caja con precios con IGV cuadra al céntimo con el ticket.
 - **Facturación electrónica de Perú en el hub** (módulo `facturacion_electronica`): perfil fiscal por organización
   (`api/fiscal/profile`, OrgAdmin: ambiente beta/producción, ubigeo, usuario y clave SOL, certificado PFX; secretos
   cifrados con AES-GCM). Los sistemas piden facturas, boletas y notas de crédito y débito con datos neutros

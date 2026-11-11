@@ -35,8 +35,9 @@ public sealed record VortexFiscalParty(string DocType, string? DocNumber, string
 /// <param name="UnitCode">Unidad UN/ECE (NIU, ZZ, KGM…).</param>
 /// <param name="UnitValue">Valor unitario sin impuesto.</param>
 /// <param name="TaxRate">Tasa en fracción (0.18) en las líneas gravadas.</param>
+/// <param name="Total">Importe con impuesto y descuentos (lo cobrado): si viene, el hub deriva el valor de venta y el total cuadra al céntimo.</param>
 public sealed record VortexFiscalLine(string Description, decimal Quantity, string UnitCode, decimal UnitValue, string TaxCategory,
-    decimal TaxRate = 0, string? ItemCode = null);
+    decimal TaxRate = 0, string? ItemCode = null, decimal? Total = null);
 
 public sealed record VortexFiscalPayment(bool Credit, IReadOnlyList<VortexFiscalInstallment>? Installments = null);
 

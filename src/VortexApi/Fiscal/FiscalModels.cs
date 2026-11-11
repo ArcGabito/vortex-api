@@ -164,8 +164,12 @@ public sealed record FiscalParty([Required, MaxLength(1)] string DocType, [MaxLe
 /// <param name="UnitCode">Unidad UN/ECE (NIU productos, ZZ servicios, KGM kilos…).</param>
 /// <param name="UnitValue">Valor unitario sin impuesto.</param>
 /// <param name="TaxRate">Tasa del impuesto (0.18 para el IGV) en las líneas gravadas.</param>
+/// <param name="Total">
+/// Importe de la línea con impuesto, ya con descuentos (lo que cobró la caja). Si viene, el hub deriva de él el valor de venta
+/// y el impuesto (y <paramref name="UnitValue"/> se ignora), así el total del comprobante es exactamente lo cobrado.
+/// </param>
 public sealed record FiscalLine([Required, MaxLength(500)] string Description, decimal Quantity, [Required, MaxLength(3)] string UnitCode,
-    decimal UnitValue, [Required] string TaxCategory, decimal TaxRate = 0, [MaxLength(30)] string? ItemCode = null);
+    decimal UnitValue, [Required] string TaxCategory, decimal TaxRate = 0, [MaxLength(30)] string? ItemCode = null, decimal? Total = null);
 
 /// <summary>Forma de pago (obligatoria en facturas de Perú): al contado o al crédito con sus cuotas.</summary>
 public sealed record FiscalPayment(bool Credit, List<FiscalInstallment>? Installments = null);

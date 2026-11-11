@@ -59,8 +59,8 @@ public static partial class PeruRules
             var l = r.Lines[i];
             if (l.Quantity <= 0)
                 errors.Add($"lines[{i}].quantity debe ser mayor que cero.");
-            if (l.UnitValue < 0)
-                errors.Add($"lines[{i}].unitValue no puede ser negativo.");
+            if (l.UnitValue < 0 || l.Total < 0)
+                errors.Add($"lines[{i}] no puede tener valor ni total negativos.");
             if (!FiscalTaxCategories.All.Contains(l.TaxCategory))
                 errors.Add($"lines[{i}].taxCategory debe ser uno de: {string.Join(", ", FiscalTaxCategories.All)}.");
             else if (l.TaxCategory == FiscalTaxCategories.Taxed && l.TaxRate is <= 0 or >= 1)
