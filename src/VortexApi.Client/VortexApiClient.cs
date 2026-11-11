@@ -191,6 +191,52 @@ public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions opti
     public async Task RevokePublicLinkAsync(string accessToken, Guid id, CancellationToken ct = default) =>
         await SendAsync<object>(Authorized(HttpMethod.Delete, $"api/public-links/{id}", accessToken), ct);
 
+    // ---------- Facturación electrónica ----------
+
+    /// <summary>
+    /// Pide un comprobante electrónico al hub (módulo <c>facturacion_electronica</c>). Vuelve en cola (<see cref="VortexFiscalStatus.Pending"/>);
+    /// el resultado llega como <see cref="VortexHubEvents.FiscalAccepted"/> o <see cref="VortexHubEvents.FiscalRejected"/>. Con el
+    /// mismo <c>SourceId</c> devuelve el que ya existe, así se puede reintentar desde la cola sin conexión.
+    /// </summary>
+    public Task<VortexFiscalDocument> IssueFiscalDocumentAsync(string accessToken, VortexFiscalRequest document, CancellationToken ct = default)
+    {
+        var request = Authorized(HttpMethod.Post, "api/fiscal/documents", accessToken);
+        request.Content = JsonContent.Create(document, options: Json);
+        return SendAsync<VortexFiscalDocument>(request, ct)!;
+    }
+
+    /// <summary>El comprobante con su estado. Null si no existe.</summary>
+    public async Task<VortexFiscalDocument?> GetFiscalDocumentAsync(string accessToken, Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            return await SendAsync<VortexFiscalDocument>(Authorized(HttpMethod.Get, $"api/fiscal/documents/{id}", accessToken), ct);
+        }
+        catch (VortexApiException ex) when (ex.StatusCode == 404)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Comprobantes del sistema: por documento de origen, por estado o los cambiados desde una fecha.</summary>
+    public Task<IReadOnlyList<VortexFiscalDocument>> GetFiscalDocumentsAsync(string accessToken, Guid? sourceId = null,
+        VortexFiscalStatus? status = null, DateTimeOffset? updatedSince = null, CancellationToken ct = default)
+    {
+        var query = new List<string>();
+        if (sourceId is { } source)
+            query.Add($"sourceId={source}");
+        if (status is { } s)
+            query.Add($"status={s}");
+        if (updatedSince is { } since)
+            query.Add($"updatedSince={Uri.EscapeDataString(since.ToString("O"))}");
+        return SendAsync<IReadOnlyList<VortexFiscalDocument>>(Authorized(HttpMethod.Get,
+            "api/fiscal/documents" + (query.Count > 0 ? "?" + string.Join('&', query) : ""), accessToken), ct)!;
+    }
+
+    /// <summary>Vuelve a enviar un comprobante que quedó en <see cref="VortexFiscalStatus.Failed"/>.</summary>
+    public Task<VortexFiscalDocument> RetryFiscalDocumentAsync(string accessToken, Guid id, CancellationToken ct = default) =>
+        SendAsync<VortexFiscalDocument>(Authorized(HttpMethod.Post, $"api/fiscal/documents/{id}/retry", accessToken), ct)!;
+
     // ---------- Internos ----------
 
     private static string TypesQuery(IEnumerable<string>? types)

@@ -57,4 +57,13 @@ public static class VortexHubEvents
 
     /// <summary>Patrón para <c>OnEvent</c>: las dos respuestas.</summary>
     public const string PublicLinkResponses = "hub.public_link.*";
+
+    /// <summary>Comprobante electrónico aceptado (u observado) por la autoridad tributaria.</summary>
+    public const string FiscalAccepted = "hub.fiscal.accepted";
+
+    /// <summary>Comprobante electrónico rechazado, o que no se pudo enviar tras los reintentos.</summary>
+    public const string FiscalRejected = "hub.fiscal.rejected";
+
+    /// <summary>Patrón para <c>OnEvent</c>: las dos respuestas fiscales.</summary>
+    public const string FiscalResponses = "hub.fiscal.*";
 }

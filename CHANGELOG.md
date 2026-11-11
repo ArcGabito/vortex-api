@@ -8,6 +8,14 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Facturación electrónica de Perú en el hub** (módulo `facturacion_electronica`): perfil fiscal por organización
+  (`api/fiscal/profile`, OrgAdmin: ambiente beta/producción, ubigeo, usuario y clave SOL, certificado PFX; secretos
+  cifrados con AES-GCM). Los sistemas piden facturas, boletas y notas de crédito y débito con datos neutros
+  (`POST api/fiscal/documents`, idempotente por `sourceId`); el hub valida las reglas de SUNAT, arma el XML UBL 2.1,
+  lo firma (XMLDSig), lo envía a `billService` con reintentos y avisa con `hub.fiscal.accepted|rejected` (hash y texto
+  del QR). Consulta del XML firmado y del CDR, reintento de los fallidos. SDK: `IssueFiscalDocumentAsync`,
+  `GetFiscalDocumentAsync`, `GetFiscalDocumentsAsync`, `RetryFiscalDocumentAsync`. Configuración `Fiscal:*`. Migración
+  `FiscalDocuments`.
 - Eventos `shipment.returned` y `goods.returned` (devoluciones de clientes y a proveedores desde el WMS, para las notas
   del ERP) y `balance.moved` (libro de puntos y gift cards replicado entre las cajas del POS; el saldo es la suma).
 - Evento `cash.deposited`: el POS informa el efectivo de una caja depositado en el banco y la tesorería del ERP lo

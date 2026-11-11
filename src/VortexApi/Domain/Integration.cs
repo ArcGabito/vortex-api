@@ -153,6 +153,8 @@ public static class EventCatalog
         new("pos.record.upserted", "Replicación interna del POS entre las cajas de una organización (configuración de cada tienda: ticket, cierre ciego, cajón).", ["POS"], ["POS"]),
         new("hub.public_link.accepted", "El cliente aceptó con su firma un documento desde su enlace público (p. ej. una cotización): lo consume el sistema dueño del documento.", ["HUB"], ["CRM"]),
         new("hub.public_link.rejected", "El cliente rechazó un documento desde su enlace público.", ["HUB"], ["CRM"]),
+        new("hub.fiscal.accepted", "La autoridad tributaria aceptó (o aceptó con observaciones) un comprobante electrónico que el hub firmó y envió: trae el resumen de la firma y el texto del QR.", ["HUB"], ["ERP", "POS"]),
+        new("hub.fiscal.rejected", "Comprobante electrónico rechazado por la autoridad tributaria o que no se pudo enviar tras los reintentos.", ["HUB"], ["ERP", "POS"]),
         new("master.party.created|updated|deleted", "Cambio en clientes/proveedores (datos maestros).", ["HUB"], ["ERP", "CRM", "POS"]),
         new("master.item.created|updated|deleted", "Cambio en artículos (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),
         new("master.site.created|updated|deleted", "Cambio en sedes/almacenes (datos maestros).", ["HUB"], ["ERP", "WMS", "POS"]),
