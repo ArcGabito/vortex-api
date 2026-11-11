@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VortexApi.Domain;
+using VortexApi.Fiscal;
 
 namespace VortexApi.Data;
 
@@ -28,6 +29,8 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<IntegrationClient> IntegrationClients => Set<IntegrationClient>();
     public DbSet<PublicLink> PublicLinks => Set<PublicLink>();
+    public DbSet<FiscalProfile> FiscalProfiles => Set<FiscalProfile>();
+    public DbSet<FiscalDocument> FiscalDocuments => Set<FiscalDocument>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -276,6 +279,38 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.SubjectId).HasMaxLength(100);
             e.HasIndex(x => new { x.OrganizationId, x.Sequence }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.Category, x.Sequence });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<FiscalProfile>(e =>
+        {
+            e.HasKey(x => x.OrganizationId);
+            e.Property(x => x.Ubigeo).HasMaxLength(6);
+            e.Property(x => x.SolUser).HasMaxLength(30);
+            e.Property(x => x.CertificateSubject).HasMaxLength(500);
+            e.Property(x => x.SignatureAlgorithm).HasMaxLength(10);
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<FiscalDocument>(e =>
+        {
+            e.Property(x => x.Product).HasMaxLength(16);
+            e.Property(x => x.DocumentType).HasMaxLength(20);
+            e.Property(x => x.Series).HasMaxLength(4);
+            e.Property(x => x.CurrencyCode).HasMaxLength(3);
+            e.Property(x => x.Total).HasPrecision(18, 2);
+            e.Property(x => x.CustomerDocType).HasMaxLength(1);
+            e.Property(x => x.CustomerDocNumber).HasMaxLength(15);
+            e.Property(x => x.Hash).HasMaxLength(100);
+            e.Property(x => x.QrText).HasMaxLength(300);
+            e.Property(x => x.ResponseCode).HasMaxLength(10);
+            e.Property(x => x.ResponseDescription).HasMaxLength(1000);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.Ignore(x => x.FullNumber);
+            e.HasIndex(x => new { x.OrganizationId, x.Product, x.SourceId }).IsUnique();
+            e.HasIndex(x => new { x.OrganizationId, x.DocumentType, x.Series, x.Number }).IsUnique();
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         });
 

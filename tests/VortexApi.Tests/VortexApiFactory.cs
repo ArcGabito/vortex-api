@@ -13,6 +13,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Time.Testing;
 using VortexApi.Data;
+using VortexApi.Fiscal;
+using VortexApi.Fiscal.Peru;
 using VortexApi.Services.Webhooks;
 
 namespace VortexApi.Tests;
@@ -34,6 +36,16 @@ public sealed class VortexApiFactory(IReadOnlyDictionary<string, string>? settin
 
     /// <summary>Receptor de webhooks falso: registra cada POST y responde con <see cref="FakeWebhookReceiver.StatusCode"/>.</summary>
     public FakeWebhookReceiver Webhooks { get; } = new();
+
+    /// <summary>SUNAT falsa: registra cada envío y responde lo que se le encole (por defecto, CDR aceptado).</summary>
+    public FakeSunat Sunat { get; } = new();
+
+    /// <summary>Ejecuta una pasada del procesador de comprobantes electrónicos.</summary>
+    public async Task<int> ProcessFiscalAsync()
+    {
+        using var scope = Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<FiscalService>().ProcessDueAsync();
+    }
 
     /// <summary>Ejecuta una pasada del despachador de webhooks.</summary>
     public async Task<int> DeliverWebhooksAsync()
@@ -58,6 +70,8 @@ public sealed class VortexApiFactory(IReadOnlyDictionary<string, string>? settin
         builder.UseSetting("RateLimiting:PublicPermitsPerMinute", "10000");
         builder.UseSetting("Webhooks:DispatcherEnabled", "false");
         builder.UseSetting("Webhooks:MaxAttempts", "3");
+        builder.UseSetting("Fiscal:ProcessorEnabled", "false");
+        builder.UseSetting("Fiscal:MaxAttempts", "3");
         builder.UseSetting("Seed:AdminEmail", AdminEmail);
         builder.UseSetting("Seed:AdminPassword", AdminPassword);
         foreach (var (code, key) in ProductKeys)
@@ -73,6 +87,8 @@ public sealed class VortexApiFactory(IReadOnlyDictionary<string, string>? settin
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Clock);
             services.AddHttpClient(WebhookDeliveryService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Webhooks);
+            services.RemoveAll<ISunatClient>();
+            services.AddSingleton<ISunatClient>(Sunat);
         });
     }
 
@@ -138,4 +154,22 @@ public sealed class FakeWebhookReceiver : HttpMessageHandler
 
     // El HttpClientFactory rota handlers; este es compartido y no debe liberarse.
     protected override void Dispose(bool disposing) { }
+}
+
+public sealed class FakeSunat : ISunatClient
+{
+    public sealed record Sent(FiscalEnvironment Environment, string Username, string Password, string FileName, string Xml);
+
+    public List<Sent> Requests { get; } = [];
+    public Queue<SendResult> Responses { get; } = new();
+
+    public static SendResult Accepted(params string[] notes) =>
+        new(SendOutcome.Responded, "0", "La Factura ha sido aceptada", notes, "<ApplicationResponse>CDR</ApplicationResponse>");
+
+    public Task<SendResult> SendBillAsync(FiscalEnvironment environment, string username, string password, string fileName, byte[] zip,
+        CancellationToken ct = default)
+    {
+        Requests.Add(new Sent(environment, username, password, fileName, SunatClient.ReadZip(zip)));
+        return Task.FromResult(Responses.Count > 0 ? Responses.Dequeue() : Accepted());
+    }
 }

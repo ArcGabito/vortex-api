@@ -5,6 +5,8 @@ public static class AuditActions
     public const string ProductLogin = "product.login";
     public const string PublicLinkAccepted = "public_link.accepted";
     public const string PublicLinkRejected = "public_link.rejected";
+    public const string FiscalProfileUpdated = "fiscal.profile_updated";
+    public const string FiscalDocumentRetried = "fiscal.document_retried";
     public const string AdminLogin = "admin.login";
     public const string Refresh = "session.refresh";
     public const string RefreshReuse = "session.refresh_reuse";

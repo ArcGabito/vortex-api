@@ -67,6 +67,10 @@ luego **México** (CFDI 4.0 vía PAC), **Colombia** (factura electrónica DIAN),
 UE los formatos y reportes de impuestos (sales tax por estado, IVA y factura electrónica de la UE). Cada paquete es
 un módulo por `features`.
 
+**Estado (2026-11):** Perú 3a hecho en el hub: facturas, boletas y notas de crédito y débito UBL 2.1 firmadas y
+enviadas a SUNAT (`api/fiscal`, `hub.fiscal.accepted|rejected`, `IssueFiscalDocumentAsync`). Siguen: resumen diario y
+comunicación de baja, consulta del CDR, guías de remisión, envío por OSE, y que ERP y POS emitan con el hub.
+
 ## Fase 4: escala y ecosistema · L
 
 Reportes y tableros configurables, importación masiva, API pública y webhooks por sistema (sobre los del hub),

@@ -346,6 +346,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `pos.record.upserted` | POS | POS (sus otras cajas) |
 | `master.{party,item,site,company,exchange_rate,price_list}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 | `hub.public_link.accepted`, `hub.public_link.rejected` | Hub | El sistema dueño del documento (CRM) |
+| `hub.fiscal.accepted`, `hub.fiscal.rejected` | Hub | El sistema que pidió el comprobante (ERP, POS) |
 
 ### Enlaces públicos firmados (aceptación del cliente)
 
@@ -368,6 +369,44 @@ Para que alguien de fuera (un cliente, sin usuario en el hub) vea un documento y
    respuestas. Un enlace vencido (`expiresAt`, como máximo a un año) tampoco las acepta (`link_expired`).
 
 Cada sistema solo ve y administra sus enlaces (`product` del token).
+
+### Facturación electrónica (Perú)
+
+El hub firma y envía los comprobantes electrónicos de todos los sistemas, así el certificado digital y la clave SOL no
+salen del hub y todas las cajas y equipos emiten con el mismo certificado. Se habilita con el módulo
+`facturacion_electronica` en el acceso de la organización al sistema (`features`), y el OrgAdmin configura el perfil:
+
+- `PUT /api/fiscal/profile` (OrgAdmin): `enabled`, `environment` (`Test` = beta de SUNAT, `Production`), `ubigeo`,
+  `solUser`, `solPassword`, `certificateBase64` (PFX) y `certificatePassword`, `signatureAlgorithm` (`sha1` o
+  `sha256`). Los secretos se guardan cifrados (AES-GCM, `Fiscal:SecretKey`) y nunca se devuelven; mandar null los deja
+  como están. El emisor (RUC, razón social, dirección) son los datos de la empresa, que debe ser de Perú con un RUC
+  válido. `GET /api/fiscal/profile` dice si está habilitado y si hay certificado, con su titular y vencimiento.
+
+El sistema pide el comprobante con `IssueFiscalDocumentAsync(token, new VortexFiscalRequest(...))`
+(`POST /api/fiscal/documents`):
+
+1. Datos neutros: `type` (`invoice`, `receipt`, `credit_note`, `debit_note`), `series` (F001 facturas, B001 boletas; las
+   notas usan la letra de su comprobante), `number` (la numeración es del sistema, por serie de su equipo), fecha,
+   moneda, cliente (`docType` del catálogo 6: 6 RUC, 1 DNI, `-` sin documento) y líneas con valor unitario **sin
+   impuesto**, unidad UN/ECE, categoría (`taxed`, `exempt`, `unaffected`, `export`) y tasa (0.18). Opcionales: forma de
+   pago (al crédito con cuotas, solo facturas), `reference` en las notas (comprobante y motivo del catálogo 9 o 10) y
+   observación. El hub calcula valor de venta, IGV por línea y totales.
+2. Se valida al instante (RUC con dígito verificador, factura a cliente con RUC, boleta desde S/ 700 con documento,
+   motivos de nota…) y responde **202** con el comprobante en `Pending`. Con el mismo `sourceId` devuelve el que ya
+   existe: se puede reintentar desde la cola sin conexión. Otro comprobante con el mismo tipo, serie y número:
+   `fiscal_number_in_use`.
+3. Un procesador en segundo plano arma el XML UBL 2.1, lo firma (XMLDSig), lo envía comprimido a `billService` de SUNAT
+   y guarda la constancia (CDR). Sin conexión reintenta con espera creciente y **el mismo XML firmado**.
+4. El resultado llega como `hub.fiscal.accepted` (`Accepted`, o `Observed` si SUNAT dejó observaciones: es válido) o
+   `hub.fiscal.rejected` (`Rejected`: no es válido, se emite otro con otro número; `Failed`: no se pudo enviar, p. ej.
+   clave SOL incorrecta). `VortexFiscalResponded` trae `sourceId`, `status`, `hash` (resumen de la firma) y `qrText`
+   (texto del QR) para la representación impresa.
+5. `GetFiscalDocumentAsync`, `GetFiscalDocumentsAsync` (por `sourceId`, estado o `updatedSince`),
+   `GET /api/fiscal/documents/{id}/xml` y `/cdr`, y `RetryFiscalDocumentAsync` para los `Failed`.
+
+Configuración: `Fiscal:ProcessorEnabled`, `PollIntervalSeconds`, `BatchSize`, `MaxAttempts` (12), `TimeoutSeconds`,
+`SecretKey`. Pendiente: resumen diario y comunicación de baja, consulta del CDR (`getStatusCdr`), guías de remisión y
+envío por OSE.
 
 ### Contenido de los eventos (versión 1)
 

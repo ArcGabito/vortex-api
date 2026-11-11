@@ -6,6 +6,8 @@ using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using VortexApi;
 using VortexApi.Data;
+using VortexApi.Fiscal;
+using VortexApi.Fiscal.Peru;
 using VortexApi.Infrastructure;
 using VortexApi.Security;
 using VortexApi.Services;
@@ -59,6 +61,13 @@ builder.Services.AddScoped<WebhookDeliveryService>();
 builder.Services.AddHostedService<WebhookDispatcher>();
 builder.Services.AddHttpClient(WebhookDeliveryService.HttpClientName)
     .ConfigurePrimaryHttpMessageHandler(sp => NetworkGuard.CreateHandler(sp.GetRequiredService<IOptions<WebhookOptions>>().Value));
+
+builder.Services.Configure<FiscalOptions>(config.GetSection(FiscalOptions.Section));
+builder.Services.AddSingleton<FiscalSecrets>();
+builder.Services.AddScoped<FiscalService>();
+builder.Services.AddHostedService<FiscalProcessor>();
+builder.Services.AddHttpClient<ISunatClient, SunatClient>((sp, c) =>
+    c.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<FiscalOptions>>().Value.TimeoutSeconds));
 
 if (config.GetValue<bool>("ForwardedHeaders:Enabled"))
 {
