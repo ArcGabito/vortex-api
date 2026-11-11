@@ -425,6 +425,10 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
   "payments": [ { "method": "cash", "amount": 59.90 } ] }        // cash | card | transfer | wallet | credit
 //                        (POS fase 3b: "coupon": "VERANO" | null con el cupón usado, y en cada línea "promotionId": "guid | null"
 //                         con la promoción que hizo su descuento)
+//                        (POS fase 5b: "tip": 0 y "tipTo": "nombre | null" con la propina, fuera de "total" y del comprobante;
+//                         los "payments" suman el total sin la propina. Un pago en otra moneda trae "currencyCode": "USD",
+//                         "foreignAmount" (lo entregado en esa moneda) y "exchangeRate" (compra del hub); "amount" sigue en la
+//                         moneda de la venta)
 
 // sale.voided          { "saleId": "guid", "number": "B001-000123", "reason": "..." }
 // sale.returned        { "saleId": "guid", "returnId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "total" } ], "total": 0 }
