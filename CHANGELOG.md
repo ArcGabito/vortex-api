@@ -8,6 +8,7 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Docs: `sale.completed` admite `tip`, `tipTo` y, por pago, `currencyCode`, `foreignAmount` y `exchangeRate` (POS fase 5b).
 - Evento `purchase.requested`: el WMS envía su sugerencia de compra por proveedor (stock bajo el mínimo, consumo diario y
   días de cobertura) y el ERP la registra como solicitud de compra por aprobar.
 - Línea fiscal con `total` (importe con impuesto y descuentos, lo cobrado): el hub deriva el valor de venta y el IGV, así
