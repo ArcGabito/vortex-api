@@ -330,6 +330,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `cash.deposited` | POS | ERP |
 | `credit_note.issued`, `debit_note.issued` | ERP | ERP (sus otros equipos) |
 | `invoice.voided` | ERP | ERP (sus otros equipos) |
+| `purchase.requested` | WMS | ERP |
 | `purchase_order.created` | ERP | WMS |
 | `purchase_order.cancelled` | ERP | WMS, ERP (sus otros equipos) |
 | `goods.received` | WMS | ERP |
@@ -457,6 +458,11 @@ fechas ISO 8601, Ids del hub). Se pueden agregar campos; no quitar ni cambiar el
 //                        "reference": "nro. de operación | null", "bank": "nombre | null", "depositedOn": "2026-11-09",
 //                        "sessionId": "guid | null", "userName": "cajero | null" }   (efectivo de caja llevado al banco)
 
+// purchase.requested   { "requestId": "guid", "number": "SC-…", "siteId": "guid", "supplierId": "guid | null",
+//                        "neededBy": "2026-11-20 | null", "notes": "… | null", "requestedBy": "operario | null",
+//                        "lines": [ { "itemId", "quantity", "unitCode": "NIU | null", "unitCost": 0 | null,
+//                                     "onHand": 0, "minimum": 0 | null, "maximum": 0 | null, "dailyUsage": 0, "coverageDays": 0 | null } ] }
+//                        (WMS fase 6a: el ERP la registra como solicitud de compra por aprobar; misma requestId = misma solicitud)
 // purchase_order.created { "purchaseOrderId": "guid", "supplierId": "guid", "siteId": "guid", "lines": [ { "itemId", "quantity", "unitCost" } ] }
 // purchase_order.cancelled { "purchaseOrderId": "guid", "number": "OC-0001", "reason": "... | null" }   (lo ya recibido queda; el resto no se espera)
 // goods.received       { "receiptId": "guid", "purchaseOrderId": "guid | null", "siteId": "guid",

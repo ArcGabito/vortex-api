@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Evento `purchase.requested`: el WMS envía su sugerencia de compra por proveedor (stock bajo el mínimo, consumo diario y
+  días de cobertura) y el ERP la registra como solicitud de compra por aprobar.
 - Línea fiscal con `total` (importe con impuesto y descuentos, lo cobrado): el hub deriva el valor de venta y el IGV, así
   el comprobante de una caja con precios con IGV cuadra al céntimo con el ticket.
 - **Facturación electrónica de Perú en el hub** (módulo `facturacion_electronica`): perfil fiscal por organización
