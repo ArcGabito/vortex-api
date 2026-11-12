@@ -15,7 +15,7 @@ public sealed record VortexMasterMeta(int Version, DateTimeOffset CreatedAt, Dat
 public sealed record VortexParty(
     Guid Id, bool IsCustomer, bool IsSupplier, string Kind, string Name, string? TradeName, string? DocumentType,
     string? DocumentNumber, string? Email, string? Phone, VortexAddress? Address, string? Notes, bool IsActive,
-    VortexMasterMeta Meta, VortexPartyCredit? Credit = null, VortexPartyAccount? Account = null);
+    VortexMasterMeta Meta, VortexPartyCredit? Credit = null, VortexPartyAccount? Account = null, VortexPartyConsents? Consents = null);
 
 /// <summary>Condiciones comerciales del cliente (las maneja el ERP): plazo, límite de crédito en la moneda de la empresa y descuento.</summary>
 public sealed record VortexPartyCredit(int? PaymentTermDays = null, decimal? CreditLimit = null, decimal? DiscountPercent = null,
@@ -62,6 +62,16 @@ public static class VortexPriceLists
 
 /// <summary>Quién del equipo atiende al cliente (lo maneja el CRM).</summary>
 public sealed record VortexPartyAccount(Guid? OwnerUserId = null, string? OwnerName = null);
+
+/// <summary>
+/// Consentimientos del titular de los datos (Ley 29733, LGPD, GDPR): tratamiento de datos y publicidad por canal. Sin
+/// <c>Marketing</c> = true no se le envía publicidad por ningún canal.
+/// </summary>
+public sealed record VortexPartyConsents(bool? DataProcessing = null, bool? Marketing = null, IReadOnlyList<string>? Channels = null,
+    string? PolicyVersion = null, DateTimeOffset? UpdatedAt = null, string? Source = null, string? CapturedBy = null)
+{
+    public bool AllowsMarketing(string channel) => Marketing == true && (Channels ?? []).Contains(channel, StringComparer.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// Artículo del hub. <c>UnitCode</c> es la unidad base (UN/ECE Rec. 20; Tabla 6 de SUNAT); <c>Tracking</c> es

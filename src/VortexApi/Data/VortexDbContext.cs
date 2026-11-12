@@ -172,6 +172,10 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.Property(x => x.CreditLimit).HasPrecision(18, 2);
             e.Property(x => x.DiscountPercent).HasPrecision(5, 2);
             e.Property(x => x.OwnerName).HasMaxLength(200);
+            e.Property(x => x.ConsentChannels).HasMaxLength(100);
+            e.Property(x => x.ConsentPolicyVersion).HasMaxLength(50);
+            e.Property(x => x.ConsentSource).HasMaxLength(10);
+            e.Property(x => x.ConsentCapturedBy).HasMaxLength(200);
             Address(e);
             e.HasIndex(x => new { x.OrganizationId, x.DocumentType, x.DocumentNumber }).IsUnique()
                 .HasFilter($"{NotDeleted} AND [DocumentNumber] IS NOT NULL");

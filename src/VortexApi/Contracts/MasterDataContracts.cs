@@ -31,7 +31,8 @@ public sealed record PartyRequest(
     [MaxLength(2000)] string? Notes = null,
     bool IsActive = true,
     PartyCreditDto? Credit = null,
-    PartyAccountDto? Account = null);
+    PartyAccountDto? Account = null,
+    PartyConsentsDto? Consents = null);
 
 /// <summary>
 /// Condiciones comerciales del cliente (las maneja el ERP). En un PUT, si no se manda, quedan como estaban: así un
@@ -50,10 +51,30 @@ public sealed record PartyCreditDto(
 /// <summary>Quién del equipo atiende al cliente (lo maneja el CRM). En un PUT, si no se manda, queda como estaba.</summary>
 public sealed record PartyAccountDto(Guid? OwnerUserId = null, [MaxLength(200)] string? OwnerName = null);
 
+/// <summary>
+/// Consentimientos del titular de los datos (Ley 29733 en Perú, LGPD en Brasil, GDPR en Europa). Los captura el POS o el
+/// CRM; en un PUT, si no se manda el bloque, quedan como estaban. Sin <c>marketing</c>, nadie le envía publicidad.
+/// </summary>
+/// <param name="DataProcessing">Autoriza el tratamiento de sus datos (null = no se le preguntó).</param>
+/// <param name="Marketing">Acepta recibir publicidad.</param>
+/// <param name="Channels">Canales aceptados: <c>email</c>, <c>whatsapp</c>, <c>sms</c>, <c>phone</c>.</param>
+/// <param name="PolicyVersion">Versión de la política de privacidad que aceptó.</param>
+/// <param name="UpdatedAt">Cuándo lo dio o lo retiró (puede ser de una caja sin conexión; no se acepta en el futuro).</param>
+/// <param name="Source"><c>POS</c>, <c>CRM</c> o <c>WEB</c>.</param>
+public sealed record PartyConsentsDto(
+    bool? DataProcessing = null,
+    bool? Marketing = null,
+    IReadOnlyList<string>? Channels = null,
+    [MaxLength(50)] string? PolicyVersion = null,
+    DateTimeOffset? UpdatedAt = null,
+    [MaxLength(10)] string? Source = null,
+    [MaxLength(200)] string? CapturedBy = null);
+
 public sealed record PartyDto(
     Guid Id, bool IsCustomer, bool IsSupplier, PartyKind Kind, string Name, string? TradeName,
     string? DocumentType, string? DocumentNumber, string? Email, string? Phone, AddressDto? Address,
-    string? Notes, bool IsActive, MasterMeta Meta, PartyCreditDto? Credit = null, PartyAccountDto? Account = null);
+    string? Notes, bool IsActive, MasterMeta Meta, PartyCreditDto? Credit = null, PartyAccountDto? Account = null,
+    PartyConsentsDto? Consents = null);
 
 public sealed record ItemRequest(
     [Required, MaxLength(64)] string Sku,

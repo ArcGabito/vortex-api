@@ -176,6 +176,36 @@ public sealed class MasterDataTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Consents_are_kept_by_systems_that_do_not_send_them_and_marketing_needs_a_channel()
+    {
+        var captured = DateTimeOffset.UtcNow.AddMinutes(-30);   // en una caja sin conexión
+        var created = await _pos.PostOkAsync("api/master/parties", new
+        {
+            name = "Rosa Quispe", kind = "Person", documentType = "DNI", documentNumber = "45678912",
+            consents = new { dataProcessing = true, marketing = true, channels = new[] { "WhatsApp", "fax", "email" }, policyVersion = "2026-01",
+                updatedAt = captured, source = "pos", capturedBy = "Luis" },
+        });
+        var id = created.GetProperty("id").GetGuid();
+        var consents = created.GetProperty("consents");
+        Assert.Equal(["whatsapp", "email"], consents.GetProperty("channels").EnumerateArray().Select(c => c.GetString()));
+        Assert.Equal("POS", consents.GetProperty("source").GetString());
+
+        // El ERP corrige el correo sin mandar el bloque: los consentimientos quedan.
+        await _erp.PutOkAsync($"api/master/parties/{id}", new { name = "Rosa Quispe", kind = "Person", documentType = "DNI", documentNumber = "45678912",
+            email = "rosa@example.com" });
+        var party = (await (await _erp.GetAsync($"api/master/parties/{id}")).ReadJsonAsync()).Deserialize<VortexParty>(VortexJson.Options)!;
+        Assert.True(party.Consents!.AllowsMarketing("whatsapp"));
+        Assert.False(party.Consents.AllowsMarketing("sms"));
+        Assert.Equal(captured.ToUnixTimeSeconds(), party.Consents.UpdatedAt!.Value.ToUnixTimeSeconds());
+
+        // Retira la publicidad: sin canales; una fecha futura se toma como ahora.
+        var revoked = await _pos.PutOkAsync($"api/master/parties/{id}", new { name = "Rosa Quispe", kind = "Person", documentType = "DNI", documentNumber = "45678912",
+            consents = new { dataProcessing = true, marketing = false, channels = new[] { "email" }, updatedAt = DateTimeOffset.UtcNow.AddDays(3) } });
+        Assert.Equal(0, revoked.GetProperty("consents").GetProperty("channels").GetArrayLength());
+        Assert.True(revoked.GetProperty("consents").GetProperty("updatedAt").GetDateTimeOffset() <= DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
     public async Task Price_lists_resolve_by_customer_then_store_with_quantity_breaks()
     {
         var coffee = (await _erp.PostOkAsync("api/master/items", new { sku = "cafe-pl", name = "Café", price = 20m })).GetProperty("id").GetGuid();

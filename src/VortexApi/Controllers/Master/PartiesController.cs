@@ -62,7 +62,23 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
                 credit.DiscountPercent is 0 ? null : credit.DiscountPercent, credit.PriceListId);
         if (r.Account is { } account)
             (p.OwnerUserId, p.OwnerName) = (account.OwnerUserId, account.OwnerUserId is null ? null : Clean(account.OwnerName));
+        if (r.Consents is { } consents)
+        {
+            var channels = (consents.Channels ?? []).Select(x => x.Trim().ToLowerInvariant()).Where(ConsentChannels.Contains).Distinct().ToList();
+            p.ConsentDataProcessing = consents.DataProcessing;
+            p.ConsentMarketing = consents.Marketing;
+            p.ConsentChannels = consents.Marketing == true && channels.Count > 0 ? string.Join(',', channels) : null;
+            p.ConsentPolicyVersion = Clean(consents.PolicyVersion);
+            var now = DateTimeOffset.UtcNow;
+            p.ConsentUpdatedAt = consents.UpdatedAt is { } at && at <= now ? at : now;
+            p.ConsentSource = Clean(consents.Source)?.ToUpperInvariant();
+            p.ConsentCapturedBy = Clean(consents.CapturedBy);
+            if (p.ConsentDataProcessing is null && p.ConsentMarketing is null)
+                (p.ConsentUpdatedAt, p.ConsentSource, p.ConsentCapturedBy, p.ConsentPolicyVersion) = (null, null, null, null);
+        }
     }
+
+    private static readonly string[] ConsentChannels = ["email", "whatsapp", "sms", "phone"];
 
     protected override async Task ValidateAsync(Party p)
     {
@@ -97,7 +113,11 @@ public sealed class PartiesController(VortexDbContext db, MasterDataWriter write
         p.PaymentTermDays is null && p.CreditLimit is null && p.DiscountPercent is null && p.PriceListId is null
             ? null
             : new PartyCreditDto(p.PaymentTermDays, p.CreditLimit, p.DiscountPercent, p.PriceListId),
-        p.OwnerUserId is null ? null : new PartyAccountDto(p.OwnerUserId, p.OwnerName));
+        p.OwnerUserId is null ? null : new PartyAccountDto(p.OwnerUserId, p.OwnerName),
+        p.ConsentDataProcessing is null && p.ConsentMarketing is null
+            ? null
+            : new PartyConsentsDto(p.ConsentDataProcessing, p.ConsentMarketing, p.ConsentChannels?.Split(',') ?? [], p.ConsentPolicyVersion,
+                p.ConsentUpdatedAt, p.ConsentSource, p.ConsentCapturedBy));
 
     private static string NormalizeDocument(string value) =>
         new string(value.Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray()).ToUpperInvariant();

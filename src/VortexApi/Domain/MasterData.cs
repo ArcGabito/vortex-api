@@ -63,6 +63,27 @@ public class Party : MasterEntity
     // Cuenta (la maneja el CRM): quién del equipo atiende al cliente.
     public Guid? OwnerUserId { get; set; }
     public string? OwnerName { get; set; }
+
+    // Consentimientos del titular de los datos (Ley 29733, LGPD, GDPR): los captura el POS o el CRM y los respetan todos.
+
+    /// <summary>Autoriza el tratamiento de sus datos personales (null = no se le preguntó).</summary>
+    public bool? ConsentDataProcessing { get; set; }
+
+    /// <summary>Acepta recibir publicidad.</summary>
+    public bool? ConsentMarketing { get; set; }
+
+    /// <summary>Canales aceptados para publicidad, separados por coma (<c>email</c>, <c>whatsapp</c>, <c>sms</c>, <c>phone</c>).</summary>
+    public string? ConsentChannels { get; set; }
+
+    /// <summary>Versión de la política de privacidad que aceptó.</summary>
+    public string? ConsentPolicyVersion { get; set; }
+
+    /// <summary>Cuándo dio (o retiró) el consentimiento.</summary>
+    public DateTimeOffset? ConsentUpdatedAt { get; set; }
+
+    /// <summary>Dónde se capturó (<c>POS</c>, <c>CRM</c>, <c>WEB</c>) y quién lo registró.</summary>
+    public string? ConsentSource { get; set; }
+    public string? ConsentCapturedBy { get; set; }
 }
 
 public enum ItemKind

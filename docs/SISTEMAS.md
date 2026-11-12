@@ -264,7 +264,11 @@ Campos que acepta el hub (los demás se ignoran):
   "notes": null, "isActive": true,
   // Opcionales; si no se mandan en un PUT quedan como estaban (un sistema que no los conoce no los borra).
   "credit": { "paymentTermDays": 30, "creditLimit": 5000.00, "discountPercent": 5 },   // ERP; límite en la moneda de la empresa
-  "account": { "ownerUserId": "guid", "ownerName": "Luis Demo" } }                       // CRM; responsable del cliente
+  "account": { "ownerUserId": "guid", "ownerName": "Luis Demo" },                        // CRM; responsable del cliente
+  "consents": { "dataProcessing": true, "marketing": true, "channels": ["email", "whatsapp"],   // POS o CRM (Ley 29733, LGPD, GDPR)
+                "policyVersion": "2026-01", "updatedAt": "...", "source": "POS", "capturedBy": "Luis" } }
+// consents: canales email | whatsapp | sms | phone (sin marketing = true no quedan canales); updatedAt puede venir de una
+// caja sin conexión (una fecha futura se toma como ahora); con dataProcessing y marketing en null el bloque se limpia.
 
 // item    PUT /api/master/items/{id}
 { "sku": "CAFE-250", "name": "Café tostado 250 g", "kind": "Product",   // Product | Service

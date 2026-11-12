@@ -8,6 +8,9 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- Consentimientos del cliente en `party` (`consents`: tratamiento de datos, publicidad y sus canales, versión de la
+  política, cuándo, dónde y quién los capturó), para la Ley 29733, LGPD y GDPR; un sistema que no manda el bloque no lo
+  borra. SDK: `VortexParty.Consents` y `VortexPartyConsents.AllowsMarketing(canal)`. Migración `PartyConsents`.
 - Docs: `sale.completed` admite `tip`, `tipTo` y, por pago, `currencyCode`, `foreignAmount` y `exchangeRate` (POS fase 5b).
 - Evento `purchase.requested`: el WMS envía su sugerencia de compra por proveedor (stock bajo el mínimo, consumo diario y
   días de cobertura) y el ERP la registra como solicitud de compra por aprobar.
