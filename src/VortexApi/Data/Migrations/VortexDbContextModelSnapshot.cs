@@ -641,6 +641,31 @@ namespace VortexApi.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("ConsentCapturedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ConsentChannels")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool?>("ConsentDataProcessing")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("ConsentMarketing")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ConsentPolicyVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ConsentSource")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTimeOffset?>("ConsentUpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("CountryCode")
                         .HasMaxLength(2)
                         .HasColumnType("nvarchar(2)");
