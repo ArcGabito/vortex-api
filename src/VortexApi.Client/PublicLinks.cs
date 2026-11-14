@@ -64,6 +64,12 @@ public static class VortexHubEvents
     /// <summary>Comprobante electrónico rechazado, o que no se pudo enviar tras los reintentos.</summary>
     public const string FiscalRejected = "hub.fiscal.rejected";
 
-    /// <summary>Patrón para <c>OnEvent</c>: las dos respuestas fiscales.</summary>
+    /// <summary>La autoridad aceptó la anulación del comprobante (comunicación de baja o resumen diario).</summary>
+    public const string FiscalVoided = "hub.fiscal.voided";
+
+    /// <summary>La autoridad rechazó la anulación, o no se pudo enviar: el comprobante sigue vigente.</summary>
+    public const string FiscalVoidRejected = "hub.fiscal.void_rejected";
+
+    /// <summary>Patrón para <c>OnEvent</c>: todas las respuestas fiscales (emisión y anulación).</summary>
     public const string FiscalResponses = "hub.fiscal.*";
 }

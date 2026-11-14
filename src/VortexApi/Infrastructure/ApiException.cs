@@ -57,6 +57,9 @@ public static class ErrorCodes
     public const string FiscalNotEnabled = "fiscal_not_enabled";
     public const string FiscalNotConfigured = "fiscal_not_configured";
     public const string FiscalCountryUnsupported = "fiscal_country_unsupported";
+    public const string FiscalNotVoidable = "fiscal_not_voidable";
+    public const string FiscalVoidLate = "fiscal_void_late";
+    public const string FiscalCdrUnavailable = "fiscal_cdr_unavailable";
     public const string FiscalNumberInUse = "fiscal_number_in_use";
     public const string FiscalNotRetryable = "fiscal_not_retryable";
 

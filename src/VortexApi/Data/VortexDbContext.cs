@@ -31,6 +31,7 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
     public DbSet<PublicLink> PublicLinks => Set<PublicLink>();
     public DbSet<FiscalProfile> FiscalProfiles => Set<FiscalProfile>();
     public DbSet<FiscalDocument> FiscalDocuments => Set<FiscalDocument>();
+    public DbSet<FiscalVoid> FiscalVoids => Set<FiscalVoid>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -315,6 +316,23 @@ public class VortexDbContext(DbContextOptions<VortexDbContext> options) : DbCont
             e.HasIndex(x => new { x.OrganizationId, x.Product, x.SourceId }).IsUnique();
             e.HasIndex(x => new { x.OrganizationId, x.DocumentType, x.Series, x.Number }).IsUnique();
             e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<FiscalVoid>(e =>
+        {
+            e.Property(x => x.Product).HasMaxLength(16);
+            e.Property(x => x.Kind).HasMaxLength(2);
+            e.Property(x => x.SummaryId).HasMaxLength(30);
+            e.Property(x => x.Reason).HasMaxLength(100);
+            e.Property(x => x.Ticket).HasMaxLength(50);
+            e.Property(x => x.ResponseCode).HasMaxLength(10);
+            e.Property(x => x.ResponseDescription).HasMaxLength(1000);
+            e.Property(x => x.LastError).HasMaxLength(500);
+            e.HasIndex(x => new { x.OrganizationId, x.SummaryId }).IsUnique();
+            e.HasIndex(x => x.DocumentId);
+            e.HasIndex(x => new { x.Status, x.NextAttemptAt });
+            e.HasOne<FiscalDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Organization>().WithMany().HasForeignKey(x => x.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         });
 

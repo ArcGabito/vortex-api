@@ -172,4 +172,33 @@ public sealed class FakeSunat : ISunatClient
         Requests.Add(new Sent(environment, username, password, fileName, SunatClient.ReadZip(zip)));
         return Task.FromResult(Responses.Count > 0 ? Responses.Dequeue() : Accepted());
     }
+
+    /// <summary>Respuestas de getStatus por encolar (por defecto, procesado con CDR aceptado).</summary>
+    public Queue<TicketStatus> Tickets { get; } = new();
+    public Queue<SendResult> CdrQueries { get; } = new();
+    public List<string> StatusQueries { get; } = [];
+    public List<(string Ruc, string Type, string Series, long Number)> ConsultedCdrs { get; } = [];
+
+    public Task<SummaryResult> SendSummaryAsync(FiscalEnvironment environment, string username, string password, string fileName, byte[] zip,
+        CancellationToken ct = default)
+    {
+        Requests.Add(new Sent(environment, username, password, fileName, SunatClient.ReadZip(zip)));
+        return Task.FromResult(new SummaryResult(SendOutcome.Responded, $"T{Requests.Count:0000}", null, null));
+    }
+
+    public Task<TicketStatus> GetStatusAsync(FiscalEnvironment environment, string username, string password, string ticket, CancellationToken ct = default)
+    {
+        StatusQueries.Add(ticket);
+        return Task.FromResult(Tickets.Count > 0 ? Tickets.Dequeue()
+            : new TicketStatus(SendOutcome.Responded, "0", new SendResult(SendOutcome.Responded, "0", "La Comunicacion de baja ha sido aceptada", [], "<cdr/>"), null));
+    }
+
+    public Task<SendResult> GetStatusCdrAsync(FiscalEnvironment environment, string username, string password, string ruc, string typeCode, string series,
+        long number, CancellationToken ct = default)
+    {
+        if (environment != FiscalEnvironment.Production)
+            return Task.FromResult(new SendResult(SendOutcome.Error, null, "SUNAT solo ofrece la consulta del CDR en producción.", [], null));
+        ConsultedCdrs.Add((ruc, typeCode, series, number));
+        return Task.FromResult(CdrQueries.Count > 0 ? CdrQueries.Dequeue() : Accepted());
+    }
 }
