@@ -8,6 +8,11 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- **Anulación de comprobantes electrónicos (Perú 7b):** comunicación de baja (RA) para facturas y sus notas y resumen
+  diario con estado 3 (RC) para boletas y sus notas, dentro de los 7 días; firma, `sendSummary` con ticket y consulta
+  `getStatus` hasta el CDR. Eventos `hub.fiscal.voided` y `hub.fiscal.void_rejected`. Consulta del CDR (`getStatusCdr`, solo
+  producción) cuando SUNAT dice que el comprobante ya estaba registrado (1033) o a pedido. SDK: `VoidFiscalDocumentAsync`,
+  `GetFiscalVoidsAsync`, `CheckFiscalDocumentAsync`. Migración `FiscalVoids`.
 - `VortexApi.Suite.Export.XlsxWriter`: libros de Excel (.xlsx) sin dependencias para los reportes de los sistemas
   (título, encabezados con filtro y fila fija, números, importes, porcentajes, fechas como fecha y fila de totales).
 - Consentimientos del cliente en `party` (`consents`: tratamiento de datos, publicidad y sus canales, versión de la

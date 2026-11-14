@@ -237,6 +237,26 @@ public sealed class VortexApiClient(HttpClient http, VortexApiClientOptions opti
     public Task<VortexFiscalDocument> RetryFiscalDocumentAsync(string accessToken, Guid id, CancellationToken ct = default) =>
         SendAsync<VortexFiscalDocument>(Authorized(HttpMethod.Post, $"api/fiscal/documents/{id}/retry", accessToken), ct)!;
 
+    /// <summary>
+    /// Pide anular un comprobante aceptado por su Id en el sistema (comunicación de baja o resumen diario, dentro de los 7 días
+    /// de su emisión). El resultado llega como <see cref="VortexHubEvents.FiscalVoided"/> o <see cref="VortexHubEvents.FiscalVoidRejected"/>.
+    /// Errores: <c>fiscal_not_voidable</c> (no está aceptado), <c>fiscal_void_late</c> (fuera de plazo: nota de crédito).
+    /// </summary>
+    public Task<VortexFiscalVoid> VoidFiscalDocumentAsync(string accessToken, Guid sourceId, string reason, CancellationToken ct = default)
+    {
+        var request = Authorized(HttpMethod.Post, $"api/fiscal/documents/by-source/{sourceId}/void", accessToken);
+        request.Content = JsonContent.Create(new { reason }, options: Json);
+        return SendAsync<VortexFiscalVoid>(request, ct)!;
+    }
+
+    /// <summary>Las anulaciones pedidas para un comprobante (por su Id en el sistema).</summary>
+    public Task<IReadOnlyList<VortexFiscalVoid>> GetFiscalVoidsAsync(string accessToken, Guid sourceId, CancellationToken ct = default) =>
+        SendAsync<IReadOnlyList<VortexFiscalVoid>>(Authorized(HttpMethod.Get, $"api/fiscal/documents/by-source/{sourceId}/voids", accessToken), ct)!;
+
+    /// <summary>Trae de SUNAT el CDR de un comprobante que quedó sin respuesta (solo en producción; si no, <c>fiscal_cdr_unavailable</c>).</summary>
+    public Task<VortexFiscalDocument> CheckFiscalDocumentAsync(string accessToken, Guid id, CancellationToken ct = default) =>
+        SendAsync<VortexFiscalDocument>(Authorized(HttpMethod.Post, $"api/fiscal/documents/{id}/check", accessToken), ct)!;
+
     // ---------- Internos ----------
 
     private static string TypesQuery(IEnumerable<string>? types)

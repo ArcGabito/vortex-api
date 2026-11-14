@@ -68,8 +68,9 @@ UE los formatos y reportes de impuestos (sales tax por estado, IVA y factura ele
 un módulo por `features`.
 
 **Estado (2026-11):** Perú 3a hecho en el hub: facturas, boletas y notas de crédito y débito UBL 2.1 firmadas y
-enviadas a SUNAT (`api/fiscal`, `hub.fiscal.accepted|rejected`, `IssueFiscalDocumentAsync`). Siguen: resumen diario y
-comunicación de baja, consulta del CDR, guías de remisión, envío por OSE, y que ERP y POS emitan con el hub.
+enviadas a SUNAT (`api/fiscal`, `hub.fiscal.accepted|rejected`, `IssueFiscalDocumentAsync`). POS (fase 5a) y ERP (fase
+7a) ya emiten con el hub. 7b hecho: comunicación de baja y resumen diario para anular (`hub.fiscal.voided|void_rejected`)
+y consulta del CDR en producción. Siguen: guías de remisión y envío por OSE.
 
 ## Fase 4: escala y ecosistema · L
 

@@ -7,6 +7,8 @@ public static class AuditActions
     public const string PublicLinkRejected = "public_link.rejected";
     public const string FiscalProfileUpdated = "fiscal.profile_updated";
     public const string FiscalDocumentRetried = "fiscal.document_retried";
+    public const string FiscalVoidRequested = "fiscal.void_requested";
+    public const string FiscalCdrChecked = "fiscal.cdr_checked";
     public const string AdminLogin = "admin.login";
     public const string Refresh = "session.refresh";
     public const string RefreshReuse = "session.refresh_reuse";

@@ -352,6 +352,7 @@ Catálogo actual (`GET /api/events/catalog`):
 | `master.{party,item,site,company,exchange_rate,price_list}.*` | Hub | Todos (ya llegan por `OnParties`/`OnItems`/…) |
 | `hub.public_link.accepted`, `hub.public_link.rejected` | Hub | El sistema dueño del documento (CRM) |
 | `hub.fiscal.accepted`, `hub.fiscal.rejected` | Hub | El sistema que pidió el comprobante (ERP, POS) |
+| `hub.fiscal.voided`, `hub.fiscal.void_rejected` | Hub | El sistema que pidió la anulación (ERP, POS) |
 
 ### Enlaces públicos firmados (aceptación del cliente)
 
@@ -411,9 +412,21 @@ El sistema pide el comprobante con `IssueFiscalDocumentAsync(token, new VortexFi
 5. `GetFiscalDocumentAsync`, `GetFiscalDocumentsAsync` (por `sourceId`, estado o `updatedSince`),
    `GET /api/fiscal/documents/{id}/xml` y `/cdr`, y `RetryFiscalDocumentAsync` para los `Failed`.
 
+6. **Anulación** (fase 7b): `VoidFiscalDocumentAsync(token, sourceId, motivo)` (`POST /api/fiscal/documents/by-source/{sourceId}/void`)
+   sobre un comprobante aceptado, dentro de los **7 días** desde su emisión (si no, `fiscal_void_late`: se corrige con una
+   nota de crédito; si no está aceptado, `fiscal_not_voidable`). Facturas y sus notas van por **comunicación de baja**
+   (`RA-AAAAMMDD-n`, `VoidedDocuments`) y boletas y sus notas por **resumen diario** con estado 3 (`RC-AAAAMMDD-n`,
+   `SummaryDocuments` 1.1). El hub firma el resumen, lo envía con `sendSummary`, guarda el ticket y consulta `getStatus`
+   hasta tener el CDR (98 = en proceso). El resultado llega como `hub.fiscal.voided` (el comprobante queda `Voided`) o
+   `hub.fiscal.void_rejected` (sigue vigente); `VortexFiscalVoidResponded` trae `sourceId`, `voided`, `summaryId`, el código y
+   la descripción. `GetFiscalVoidsAsync` lista las anulaciones de un comprobante. Pedirla otra vez devuelve la que está en curso.
+7. **Consulta del CDR**: si SUNAT responde que el comprobante ya fue registrado (1033, un reenvío de algo que sí llegó), en
+   producción el hub trae su CDR real con `getStatusCdr` (`billConsultService`); en beta, donde no existe esa consulta, lo
+   toma como aceptado con la observación. `CheckFiscalDocumentAsync` (`POST /api/fiscal/documents/{id}/check`) hace la
+   consulta a pedido (solo producción; si no, `fiscal_cdr_unavailable`).
+
 Configuración: `Fiscal:ProcessorEnabled`, `PollIntervalSeconds`, `BatchSize`, `MaxAttempts` (12), `TimeoutSeconds`,
-`SecretKey`. Pendiente: resumen diario y comunicación de baja, consulta del CDR (`getStatusCdr`), guías de remisión y
-envío por OSE.
+`SecretKey`. Pendiente: guías de remisión y envío por OSE.
 
 ### Contenido de los eventos (versión 1)
 

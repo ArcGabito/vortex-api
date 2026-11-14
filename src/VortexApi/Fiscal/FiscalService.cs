@@ -34,6 +34,15 @@ public sealed class FiscalService(
     public static readonly string[] SupportedCountries = ["PE"];
     private static readonly TimeSpan NotConfiguredDelay = TimeSpan.FromMinutes(5);
 
+    /// <summary>SUNAT: "El comprobante fue registrado previamente" (un reenvío de algo que ya llegó).</summary>
+    public const string AlreadyRegistered = "1033";
+
+    /// <summary>Días para anular por comunicación de baja o resumen diario, desde la emisión.</summary>
+    public const int VoidWindowDays = 7;
+
+    /// <summary>Espera antes de consultar un ticket (SUNAT procesa los resúmenes en segundos o minutos).</summary>
+    private static readonly TimeSpan TicketDelay = TimeSpan.FromSeconds(30);
+
     private readonly FiscalOptions _options = options.Value;
 
     // ---------- Perfil ----------
@@ -278,7 +287,7 @@ public sealed class FiscalService(
             attempted++;
         }
         db.ChangeTracker.Clear();
-        return attempted;
+        return attempted + await ProcessVoidsAsync(ct);
     }
 
     private async Task ProcessOneAsync(Guid id, CancellationToken ct)
@@ -330,6 +339,15 @@ public sealed class FiscalService(
         var fileName = PeruUbl.FileName(ruc, PeruUbl.TypeCode(document.DocumentType), document.Series, document.Number);
         var zip = SunatClient.Zip(fileName + ".xml", signedXml);
         var result = await sunat.SendBillAsync(profile.Environment, ruc + profile.SolUser, secrets.UnprotectString(profile.SolPassword!), fileName, zip, ct);
+        if (result.Code == AlreadyRegistered)
+        {
+            // Un envío anterior sí llegó (se cortó la respuesta): en producción se trae su CDR; en beta no hay consulta y se
+            // toma como aceptado con la observación.
+            result = profile.Environment == FiscalEnvironment.Production
+                ? await sunat.GetStatusCdrAsync(profile.Environment, ruc + profile.SolUser, secrets.UnprotectString(profile.SolPassword!), ruc,
+                    PeruUbl.TypeCode(document.DocumentType), document.Series, document.Number, ct)
+                : new SendResult(SendOutcome.Responded, "0", result.Description, [$"{AlreadyRegistered}: {result.Description}"], null);
+        }
 
         var attempts = document.Attempts + 1;
         var status = StatusOf(result, attempts >= _options.MaxAttempts);
@@ -406,6 +424,257 @@ public sealed class FiscalService(
             await tx.CommitAsync(ct);
         });
     }
+
+    // ---------- Anulación (fase 7b) ----------
+
+    /// <summary>
+    /// Pide anular un comprobante aceptado: facturas y sus notas por comunicación de baja, boletas y sus notas por resumen
+    /// diario. Solo dentro de los <see cref="VoidWindowDays"/> días desde la emisión; después se corrige con una nota de crédito.
+    /// Pedirlo otra vez devuelve la anulación en curso.
+    /// </summary>
+    public async Task<FiscalVoidDto> RequestVoidAsync(ClaimsPrincipal user, Guid sourceId, string reason)
+    {
+        var orgId = user.OrganizationId()!.Value;
+        var product = MasterDataWriter.SourceOf(user);
+        var document = await db.FiscalDocuments.AsNoTracking()
+            .SingleOrDefaultAsync(d => d.OrganizationId == orgId && d.Product == product && d.SourceId == sourceId)
+            ?? throw ApiException.NotFound("Comprobante");
+        var current = await db.FiscalVoids.AsNoTracking()
+            .Where(v => v.DocumentId == document.Id && v.Status != FiscalVoidStatus.Rejected && v.Status != FiscalVoidStatus.Failed)
+            .FirstOrDefaultAsync();
+        if (current is not null)
+            return ToDto(current, document.SourceId);
+        if (document.Status is not (FiscalStatus.Accepted or FiscalStatus.Observed))
+            throw ApiException.Conflict(ErrorCodes.FiscalNotVoidable, "Solo se anula un comprobante aceptado por SUNAT.");
+        var now = clock.GetUtcNow();
+        var today = DateOnly.FromDateTime(now.ToOffset(PeruOffset).DateTime);
+        if (today.DayNumber - document.IssueDate.DayNumber > VoidWindowDays)
+            throw ApiException.Conflict(ErrorCodes.FiscalVoidLate,
+                $"Pasaron más de {VoidWindowDays} días desde la emisión: corrígelo con una nota de crédito por anulación.");
+
+        var kind = PeruSummaries.KindFor(document.DocumentType, document.Series);
+        for (var attempt = 0; ; attempt++)
+        {
+            var correlative = await db.FiscalVoids.CountAsync(v => v.OrganizationId == orgId && v.Kind == kind && v.IssueDate == today) + 1;
+            var entity = new FiscalVoid
+            {
+                OrganizationId = orgId, Product = product, DocumentId = document.Id, Kind = kind,
+                SummaryId = PeruSummaries.SummaryId(kind, today, correlative), IssueDate = today, Reason = reason.Trim(),
+                Status = FiscalVoidStatus.Pending, NextAttemptAt = now, CreatedAt = now, UpdatedAt = now,
+            };
+            db.FiscalVoids.Add(entity);
+            audit.Record(AuditActions.FiscalVoidRequested, true, user.ActingUserId(), orgId, product, document.Id.ToString(),
+                $"{document.DocumentType} {document.FullNumber} ({entity.SummaryId}): {entity.Reason}");
+            try
+            {
+                await db.SaveChangesAsync();
+                return ToDto(entity, document.SourceId);
+            }
+            catch (DbUpdateException) when (attempt < 3)
+            {
+                // Otro pedido tomó el mismo correlativo del día: se vuelve a contar.
+                db.ChangeTracker.Clear();
+            }
+        }
+    }
+
+    public async Task<IReadOnlyList<FiscalVoidDto>> GetVoidsAsync(Guid orgId, string product, Guid sourceId)
+    {
+        var document = await db.FiscalDocuments.AsNoTracking()
+            .SingleOrDefaultAsync(d => d.OrganizationId == orgId && d.Product == product && d.SourceId == sourceId)
+            ?? throw ApiException.NotFound("Comprobante");
+        var voids = await db.FiscalVoids.AsNoTracking().Where(v => v.DocumentId == document.Id).OrderBy(v => v.CreatedAt).ToListAsync();
+        return voids.Select(v => ToDto(v, document.SourceId)).ToList();
+    }
+
+    /// <summary>
+    /// Consulta en SUNAT el CDR de un comprobante (solo producción): si SUNAT lo tiene, el comprobante queda con ese
+    /// resultado y el sistema recibe el evento. Sirve cuando un envío quedó sin respuesta.
+    /// </summary>
+    public async Task<FiscalDocumentDto> CheckCdrAsync(Guid orgId, string product, Guid id, Guid? actorUserId)
+    {
+        var document = await db.FiscalDocuments.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id && d.OrganizationId == orgId && d.Product == product)
+                       ?? throw ApiException.NotFound("Comprobante");
+        var profile = await db.FiscalProfiles.AsNoTracking().SingleOrDefaultAsync(p => p.OrganizationId == orgId);
+        var company = await db.CompanyProfiles.AsNoTracking().SingleOrDefaultAsync(c => c.Id == orgId);
+        if (profile is not { Enabled: true } || company?.TaxId is null)
+            throw ApiException.Conflict(ErrorCodes.FiscalNotConfigured, "La facturación electrónica no está configurada ni habilitada en el hub.");
+        var result = await sunat.GetStatusCdrAsync(profile.Environment, company.TaxId + profile.SolUser, secrets.UnprotectString(profile.SolPassword!),
+            company.TaxId, PeruUbl.TypeCode(document.DocumentType), document.Series, document.Number);
+        if (result.Outcome != SendOutcome.Responded)
+            throw ApiException.Conflict(ErrorCodes.FiscalCdrUnavailable, result.Description ?? "SUNAT no tiene la constancia de este comprobante.");
+        audit.Record(AuditActions.FiscalCdrChecked, true, actorUserId, orgId, product, document.Id.ToString(), $"{document.FullNumber}: {result.Code}");
+        var status = StatusOf(result, lastAttempt: true);
+        await FinishAsync(id, status, d =>
+        {
+            d.ResponseCode = result.Code;
+            d.ResponseDescription = Truncate(result.Description, 1000);
+            d.Notes = result.Notes.Count > 0 ? Truncate(string.Join("\n", result.Notes), 2000) : d.Notes;
+            d.CdrXml = result.CdrXml ?? d.CdrXml;
+            d.LastError = null;
+        }, CancellationToken.None);
+        return ToDto(await db.FiscalDocuments.AsNoTracking().SingleAsync(d => d.Id == id));
+    }
+
+    private static readonly TimeSpan PeruOffset = TimeSpan.FromHours(-5);
+
+    /// <summary>Envía las anulaciones en cola y consulta los tickets de las enviadas.</summary>
+    private async Task<int> ProcessVoidsAsync(CancellationToken ct)
+    {
+        var now = clock.GetUtcNow();
+        var due = await db.FiscalVoids.AsNoTracking()
+            .Where(v => (v.Status == FiscalVoidStatus.Pending || v.Status == FiscalVoidStatus.Sent) && v.NextAttemptAt <= now
+                        && (v.LockedUntil == null || v.LockedUntil < now))
+            .OrderBy(v => v.NextAttemptAt).Select(v => v.Id).Take(_options.BatchSize).ToListAsync(ct);
+        var done = 0;
+        foreach (var id in due)
+        {
+            var lockUntil = now.AddSeconds(_options.TimeoutSeconds * 2 + 30);
+            if (await db.FiscalVoids.Where(v => v.Id == id && (v.LockedUntil == null || v.LockedUntil < now))
+                    .ExecuteUpdateAsync(s => s.SetProperty(v => v.LockedUntil, lockUntil), ct) == 0)
+                continue;
+            try
+            {
+                await ProcessVoidAsync(id, ct);
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested)
+            {
+                logger.LogError(ex, "Error al procesar la anulación {Id}.", id);
+                db.ChangeTracker.Clear();
+                var retryAt = clock.GetUtcNow() + Backoff(1);
+                await db.FiscalVoids.Where(v => v.Id == id).ExecuteUpdateAsync(s => s
+                    .SetProperty(v => v.LockedUntil, (DateTimeOffset?)null)
+                    .SetProperty(v => v.NextAttemptAt, retryAt)
+                    .SetProperty(v => v.LastError, Truncate(ex.Message, 500)), CancellationToken.None);
+            }
+            done++;
+        }
+        db.ChangeTracker.Clear();
+        return done;
+    }
+
+    private async Task ProcessVoidAsync(Guid id, CancellationToken ct)
+    {
+        db.ChangeTracker.Clear();
+        var entry = await db.FiscalVoids.SingleAsync(v => v.Id == id, ct);
+        var document = await db.FiscalDocuments.AsNoTracking().SingleAsync(d => d.Id == entry.DocumentId, ct);
+        var profile = await db.FiscalProfiles.AsNoTracking().SingleOrDefaultAsync(p => p.OrganizationId == entry.OrganizationId, ct);
+        var company = await db.CompanyProfiles.AsNoTracking().SingleOrDefaultAsync(c => c.Id == entry.OrganizationId, ct);
+        var now = clock.GetUtcNow();
+        var problem = profile is not { Enabled: true } ? "La facturación electrónica está deshabilitada en el hub." : MissingForEnabled(profile, company).FirstOrDefault();
+        if (problem is not null || profile is null || company is null)
+        {
+            entry.LastError = problem;
+            entry.NextAttemptAt = now + NotConfiguredDelay;
+            entry.LockedUntil = null;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+        var ruc = company.TaxId!;
+        var user = ruc + profile.SolUser;
+        var password = secrets.UnprotectString(profile.SolPassword!);
+        entry.Attempts++;
+        entry.LockedUntil = null;
+        entry.UpdatedAt = now;
+
+        if (entry.Status == FiscalVoidStatus.Pending)
+        {
+            if (entry.SignedXml is null)
+            {
+                var request = JsonSerializer.Deserialize<FiscalDocumentRequest>(document.Request, Json)!;
+                var item = new SummaryItem(document.DocumentType, document.Series, document.Number, document.CurrencyCode, document.Total,
+                    document.CustomerDocType, document.CustomerDocNumber, request.Reference, PeruUbl.Compute(request.Lines).Totals);
+                var issuer = new PeruIssuer(ruc, company.LegalName, company.TradeName, profile.Ubigeo, company.AddressLine, company.District, company.City,
+                    company.Region);
+                var xml = entry.Kind == PeruSummaries.VoidedKind
+                    ? PeruSummaries.Voided(entry.SummaryId, document.IssueDate, entry.IssueDate, issuer, [(item, entry.Reason)])
+                    : PeruSummaries.VoidSummary(entry.SummaryId, document.IssueDate, entry.IssueDate, issuer, [item]);
+                try
+                {
+                    using var certificate = LoadCertificate(secrets.Unprotect(profile.Certificate!), secrets.UnprotectString(profile.CertificatePassword!));
+                    entry.SignedXml = XmlSigner.Sign(xml, certificate, profile.SignatureAlgorithm).Xml;
+                }
+                catch (Exception ex) when (ex is CryptographicException or InvalidOperationException)
+                {
+                    await FinishVoidAsync(entry, document, FiscalVoidStatus.Failed, null, $"No se pudo firmar: {Truncate(ex.Message, 400)}", ct);
+                    return;
+                }
+            }
+            var fileName = PeruSummaries.FileName(ruc, entry.SummaryId);
+            var sent = await sunat.SendSummaryAsync(profile.Environment, user, password, fileName, SunatClient.Zip(fileName + ".xml", entry.SignedXml), ct);
+            switch (sent.Outcome)
+            {
+                case SendOutcome.Responded:
+                    entry.Status = FiscalVoidStatus.Sent;
+                    entry.Ticket = sent.Ticket;
+                    entry.Attempts = 0;
+                    entry.LastError = null;
+                    entry.NextAttemptAt = now + TicketDelay;
+                    await db.SaveChangesAsync(ct);
+                    return;
+                case SendOutcome.Transient when entry.Attempts < _options.MaxAttempts:
+                    entry.LastError = Truncate($"{sent.Code} {sent.Description}".Trim(), 500);
+                    entry.NextAttemptAt = now + Backoff(entry.Attempts);
+                    await db.SaveChangesAsync(ct);
+                    return;
+                default:
+                    await FinishVoidAsync(entry, document, sent.Outcome == SendOutcome.Transient ? FiscalVoidStatus.Failed : FiscalVoidStatus.Rejected,
+                        sent.Code, sent.Description, ct);
+                    return;
+            }
+        }
+
+        var status = await sunat.GetStatusAsync(profile.Environment, user, password, entry.Ticket!, ct);
+        if (status.Outcome == SendOutcome.Transient || status.InProcess)
+        {
+            // Sigue en proceso (98) o no hubo respuesta: se vuelve a consultar; tras muchos intentos queda para revisar.
+            if (entry.Attempts >= _options.MaxAttempts * 3)
+            {
+                await FinishVoidAsync(entry, document, FiscalVoidStatus.Failed, status.StatusCode, status.Description ?? "SUNAT no terminó de procesar el ticket.", ct);
+                return;
+            }
+            entry.LastError = status.InProcess ? null : Truncate(status.Description, 500);
+            entry.NextAttemptAt = now + (status.InProcess ? TicketDelay * 2 : Backoff(entry.Attempts));
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+        var accepted = status.Outcome == SendOutcome.Responded && status.StatusCode == "0" && status.Cdr?.Code == "0";
+        entry.CdrXml = status.Cdr?.CdrXml;
+        await FinishVoidAsync(entry, document, accepted ? FiscalVoidStatus.Accepted : FiscalVoidStatus.Rejected,
+            status.Cdr?.Code ?? status.StatusCode, status.Cdr?.Description ?? status.Description, ct);
+    }
+
+    /// <summary>Resultado final de la anulación y el evento para el sistema; si se aceptó, el comprobante queda anulado.</summary>
+    private async Task FinishVoidAsync(FiscalVoid entry, FiscalDocument document, FiscalVoidStatus status, string? code, string? description,
+        CancellationToken ct)
+    {
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            entry.Status = status;
+            entry.ResponseCode = code;
+            entry.ResponseDescription = Truncate(description, 1000);
+            entry.LastError = status == FiscalVoidStatus.Failed ? Truncate(description, 500) : null;
+            entry.LockedUntil = null;
+            entry.UpdatedAt = clock.GetUtcNow();
+            var voided = status == FiscalVoidStatus.Accepted;
+            if (voided)
+                await db.FiscalDocuments.Where(d => d.Id == document.Id).ExecuteUpdateAsync(s => s
+                    .SetProperty(d => d.Status, FiscalStatus.Voided)
+                    .SetProperty(d => d.UpdatedAt, clock.GetUtcNow()), ct);
+            var data = new FiscalVoidResponded(document.SourceId, document.Product, document.DocumentType, document.Series, document.Number, voided,
+                entry.SummaryId, code, entry.ResponseDescription);
+            await events.AppendAsync(new EventActor(entry.OrganizationId, "HUB", null, null), voided ? FiscalEvents.Voided : FiscalEvents.VoidRejected,
+                JsonSerializer.Serialize(data, Json), subjectType: document.DocumentType, subjectId: document.SourceId.ToString());
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        });
+        logger.LogInformation("Anulación {Summary} de {Number}: {Status} ({Code} {Description}).", entry.SummaryId, document.FullNumber, status, code, description);
+    }
+
+    public static FiscalVoidDto ToDto(FiscalVoid v, Guid sourceId) => new(v.Id, v.DocumentId, sourceId, v.Kind, v.SummaryId, v.IssueDate, v.Reason,
+        v.Status, v.Ticket, v.ResponseCode, v.ResponseDescription, v.LastError, v.CreatedAt);
 
     /// <summary>1 min, 2, 4… hasta 2 h.</summary>
     public static TimeSpan Backoff(int attempts) =>

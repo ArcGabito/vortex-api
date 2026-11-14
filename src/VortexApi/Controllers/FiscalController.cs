@@ -88,6 +88,32 @@ public sealed class FiscalController(FiscalService fiscal, VortexDbContext db) :
         return fiscal.RetryAsync(orgId, product, id, User.ActingUserId());
     }
 
+    /// <summary>
+    /// Anula un comprobante aceptado (comunicación de baja o resumen diario, dentro de los 7 días): vuelve en cola y el
+    /// resultado llega como <c>hub.fiscal.voided</c> o <c>hub.fiscal.void_rejected</c>. Se pide por el Id del documento en el sistema.
+    /// </summary>
+    [HttpPost("documents/by-source/{sourceId:guid}/void")]
+    [Authorize(Policy = Policies.ProductClient)]
+    public async Task<ActionResult<FiscalVoidDto>> Void(Guid sourceId, FiscalVoidRequest request) =>
+        Accepted(await fiscal.RequestVoidAsync(User, sourceId, request.Reason));
+
+    [HttpGet("documents/by-source/{sourceId:guid}/voids")]
+    [Authorize(Policy = Policies.ProductClient)]
+    public Task<IReadOnlyList<FiscalVoidDto>> Voids(Guid sourceId)
+    {
+        var (orgId, product) = Caller();
+        return fiscal.GetVoidsAsync(orgId, product, sourceId);
+    }
+
+    /// <summary>Trae de SUNAT el CDR de un comprobante que quedó sin respuesta (solo en producción).</summary>
+    [HttpPost("documents/{id:guid}/check")]
+    [Authorize(Policy = Policies.ProductClient)]
+    public Task<FiscalDocumentDto> Check(Guid id)
+    {
+        var (orgId, product) = Caller();
+        return fiscal.CheckCdrAsync(orgId, product, id, User.ActingUserId());
+    }
+
     private (Guid OrganizationId, string Product) Caller() => (User.OrganizationId()!.Value, MasterDataWriter.SourceOf(User));
 
     private async Task<FiscalDocument> FindAsync(Guid id)

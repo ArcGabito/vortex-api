@@ -54,7 +54,27 @@ public enum VortexFiscalStatus
     Observed,
     Rejected,
     Failed,
+
+    /// <summary>Anulado ante la autoridad (comunicación de baja o resumen diario aceptados).</summary>
+    Voided,
 }
+
+public enum VortexFiscalVoidStatus
+{
+    Pending,
+    Sent,
+    Accepted,
+    Rejected,
+    Failed,
+}
+
+/// <summary>Anulación de un comprobante: <c>Kind</c> RA (comunicación de baja) o RC (resumen diario).</summary>
+public sealed record VortexFiscalVoid(Guid Id, Guid DocumentId, Guid SourceId, string Kind, string SummaryId, DateOnly IssueDate, string Reason,
+    VortexFiscalVoidStatus Status, string? Ticket, string? ResponseCode, string? ResponseDescription, string? LastError, DateTimeOffset CreatedAt);
+
+/// <summary>Contenido de <see cref="VortexHubEvents.FiscalVoided"/> y <see cref="VortexHubEvents.FiscalVoidRejected"/>.</summary>
+public sealed record VortexFiscalVoidResponded(Guid SourceId, string Product, string DocumentType, string Series, long Number, bool Voided,
+    string SummaryId, string? ResponseCode, string? ResponseDescription);
 
 /// <param name="Hash">Resumen de la firma (va en la representación impresa).</param>
 /// <param name="QrText">Texto del código QR de la representación impresa.</param>

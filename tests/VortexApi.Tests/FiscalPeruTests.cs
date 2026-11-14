@@ -173,4 +173,61 @@ public sealed class FiscalPeruTests
         Assert.Equal(FiscalStatus.Pending, FiscalService.StatusOf(SendResult.Transient("x"), false));
         Assert.Equal(FiscalStatus.Failed, FiscalService.StatusOf(SendResult.Transient("x"), true));
     }
+
+    [Fact]
+    public void Los_resumenes_de_anulacion_se_arman_y_se_firman()
+    {
+        using var certificate = SelfSigned();
+        Assert.Equal("RA", PeruSummaries.KindFor(FiscalDocumentTypes.Invoice, "F001"));
+        Assert.Equal("RA", PeruSummaries.KindFor(FiscalDocumentTypes.CreditNote, "F001"));
+        Assert.Equal("RC", PeruSummaries.KindFor(FiscalDocumentTypes.Receipt, "B001"));
+        Assert.Equal("RC", PeruSummaries.KindFor(FiscalDocumentTypes.CreditNote, "B001"));
+
+        var item = new SummaryItem(FiscalDocumentTypes.Invoice, "F001", 12, "PEN", 268.30m, "6", CustomerRuc, null, null);
+        var ra = PeruSummaries.Voided("RA-20261114-1", new DateOnly(2026, 11, 13), new DateOnly(2026, 11, 14), Issuer, [(item, "Error en el RUC")]);
+        var (signed, _) = XmlSigner.Sign(ra, certificate);
+        Assert.True(XmlSigner.Verify(signed, certificate));
+        var doc = XDocument.Parse(signed);
+        Assert.Equal("VoidedDocuments", doc.Root!.Name.LocalName);
+        Assert.Equal(("RA-20261114-1", "2026-11-13"), (doc.Root.Element(Cbc + "ID")!.Value, doc.Root.Element(Cbc + "ReferenceDate")!.Value));
+
+        var note = new SummaryItem(FiscalDocumentTypes.CreditNote, "B001", 2, "PEN", 11.80m, "1", "45678912",
+            new FiscalReference(FiscalDocumentTypes.Receipt, "B001", 5, "01", "Anulación"), new PeruTotals(10m, 0, 0, 0, 1.80m, 10m, 11.80m));
+        var rc = PeruSummaries.VoidSummary("RC-20261114-1", new DateOnly(2026, 11, 14), new DateOnly(2026, 11, 14), Issuer, [note]);
+        Assert.Contains("<cbc:DocumentTypeCode>07</cbc:DocumentTypeCode>", rc);
+        Assert.Contains("<cbc:ID>B001-5</cbc:ID>", rc);
+        Assert.Contains("<cbc:InstructionID>01</cbc:InstructionID>", rc);
+        Assert.Contains("<cbc:ConditionCode>3</cbc:ConditionCode>", rc);
+    }
+
+    [Fact]
+    public void Las_respuestas_de_ticket_y_de_consulta_se_interpretan()
+    {
+        Assert.Equal("202611140001", SunatClient.ParseSummary("""
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>
+            <br:sendSummaryResponse xmlns:br="http://service.sunat.gob.pe"><ticket>202611140001</ticket></br:sendSummaryResponse>
+            </soap:Body></soap:Envelope>
+            """).Ticket);
+        var cdr = Convert.ToBase64String(SunatClient.Zip("R-x.xml", """
+            <ar:ApplicationResponse xmlns:ar="urn:oasis:names:specification:ubl:schema:xsd:ApplicationResponse-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+            <cac:DocumentResponse><cac:Response><cbc:ResponseCode>0</cbc:ResponseCode><cbc:Description>La Comunicacion de baja RA-20261114-1, ha sido aceptada</cbc:Description></cac:Response></cac:DocumentResponse>
+            </ar:ApplicationResponse>
+            """));
+        var status = SunatClient.ParseTicket($"""
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>
+            <br:getStatusResponse xmlns:br="http://service.sunat.gob.pe"><status><statusCode>0</statusCode><content>{cdr}</content></status></br:getStatusResponse>
+            </soap:Body></soap:Envelope>
+            """);
+        Assert.Equal(("0", "0", false), (status.StatusCode, status.Cdr!.Code, status.InProcess));
+        Assert.True(SunatClient.ParseTicket("<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><status><statusCode>98</statusCode></status></s:Body></s:Envelope>").InProcess);
+
+        var consulted = SunatClient.ParseStatusCdr($"""
+            <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"><soap:Body>
+            <ns2:getStatusCdrResponse xmlns:ns2="http://service.sunat.gob.pe"><statusCdr><content>{cdr}</content><statusCode>0004</statusCode><statusMessage>La constancia existe</statusMessage></statusCdr></ns2:getStatusCdrResponse>
+            </soap:Body></soap:Envelope>
+            """);
+        Assert.Equal((SendOutcome.Responded, "0"), (consulted.Outcome, consulted.Code));
+        var missing = SunatClient.ParseStatusCdr("<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"><s:Body><statusCdr><statusCode>0127</statusCode><statusMessage>El ticket no existe</statusMessage></statusCdr></s:Body></s:Envelope>");
+        Assert.Equal((SendOutcome.Error, "0127"), (missing.Outcome, missing.Code));
+    }
 }

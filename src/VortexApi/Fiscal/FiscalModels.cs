@@ -56,7 +56,71 @@ public enum FiscalStatus
 
     /// <summary>No se pudo enviar después de todos los reintentos (sin conexión con la autoridad, credenciales).</summary>
     Failed = 4,
+
+    /// <summary>Anulado ante la autoridad (comunicación de baja o resumen diario aceptados).</summary>
+    Voided = 5,
 }
+
+/// <summary>Estado de una anulación (comunicación de baja o resumen diario).</summary>
+public enum FiscalVoidStatus
+{
+    /// <summary>En cola: falta firmarla y enviarla.</summary>
+    Pending = 0,
+
+    /// <summary>Enviada: SUNAT dio el ticket y la está procesando; se consulta hasta tener el CDR.</summary>
+    Sent = 1,
+
+    Accepted = 2,
+    Rejected = 3,
+
+    /// <summary>No se pudo enviar o consultar tras los reintentos.</summary>
+    Failed = 4,
+}
+
+/// <summary>
+/// Anulación de un comprobante aceptado (fase 7b): las facturas y sus notas por <b>comunicación de baja</b> (RA), las boletas
+/// y sus notas por <b>resumen diario</b> con estado 3 (RC). Se envía con <c>sendSummary</c> (devuelve un ticket) y se consulta
+/// con <c>getStatus</c> hasta tener el CDR.
+/// </summary>
+public class FiscalVoid
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid OrganizationId { get; set; }
+    public required string Product { get; set; }
+
+    /// <summary>El comprobante que se anula.</summary>
+    public Guid DocumentId { get; set; }
+
+    /// <summary><c>RA</c> (comunicación de baja) o <c>RC</c> (resumen diario).</summary>
+    public required string Kind { get; set; }
+
+    /// <summary>Identificador del resumen (<c>RA-20261114-1</c>): único por día y tipo en la organización.</summary>
+    public required string SummaryId { get; set; }
+    public DateOnly IssueDate { get; set; }
+    public required string Reason { get; set; }
+
+    public FiscalVoidStatus Status { get; set; }
+    public string? Ticket { get; set; }
+    public int Attempts { get; set; }
+    public DateTimeOffset NextAttemptAt { get; set; }
+    public DateTimeOffset? LockedUntil { get; set; }
+    public string? SignedXml { get; set; }
+    public string? ResponseCode { get; set; }
+    public string? ResponseDescription { get; set; }
+    public string? CdrXml { get; set; }
+    public string? LastError { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public sealed record FiscalVoidRequest([Required, MinLength(3), MaxLength(100)] string Reason);
+
+public sealed record FiscalVoidDto(Guid Id, Guid DocumentId, Guid SourceId, string Kind, string SummaryId, DateOnly IssueDate, string Reason,
+    FiscalVoidStatus Status, string? Ticket, string? ResponseCode, string? ResponseDescription, string? LastError, DateTimeOffset CreatedAt);
+
+/// <summary>Contenido de <c>hub.fiscal.voided</c> y <c>hub.fiscal.void_rejected</c>.</summary>
+public sealed record FiscalVoidResponded(Guid SourceId, string Product, string DocumentType, string Series, long Number, bool Voided, string SummaryId,
+    string? ResponseCode, string? ResponseDescription);
 
 /// <summary>Un comprobante pedido por un sistema y su recorrido hasta la autoridad tributaria.</summary>
 public class FiscalDocument
@@ -210,4 +274,10 @@ public static class FiscalEvents
 
     public const string Accepted = "hub.fiscal.accepted";
     public const string Rejected = "hub.fiscal.rejected";
+
+    /// <summary>La autoridad aceptó la anulación (comunicación de baja o resumen diario).</summary>
+    public const string Voided = "hub.fiscal.voided";
+
+    /// <summary>La autoridad rechazó la anulación o no se pudo enviar: el comprobante sigue vigente.</summary>
+    public const string VoidRejected = "hub.fiscal.void_rejected";
 }
