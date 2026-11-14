@@ -8,6 +8,8 @@ y el proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Added
+- `VortexApi.Suite.Export.XlsxWriter`: libros de Excel (.xlsx) sin dependencias para los reportes de los sistemas
+  (título, encabezados con filtro y fila fija, números, importes, porcentajes, fechas como fecha y fila de totales).
 - Consentimientos del cliente en `party` (`consents`: tratamiento de datos, publicidad y sus canales, versión de la
   política, cuándo, dónde y quién los capturó), para la Ley 29733, LGPD y GDPR; un sistema que no manda el bloque no lo
   borra. SDK: `VortexParty.Consents` y `VortexPartyConsents.AllowsMarketing(canal)`. Migración `PartyConsents`.

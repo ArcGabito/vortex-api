@@ -11,6 +11,7 @@ controlen lo mismo de la misma forma en **Perú, LATAM, EE. UU. y Europa**:
 | `VortexApi.Suite.Security` | `PermissionMatrix`: roles por sistema (los asigna el OrgAdmin en el hub) y qué puede hacer cada uno. |
 | `VortexApi.Suite.Auditing` | `AuditEntry`, acciones comunes y el esquema SQLite de la bitácora. |
 | `VortexApi.Suite.Text` | `TextCatalog`: textos de la interfaz por idioma, con los comunes de la suite incluidos. |
+| `VortexApi.Suite.Export` | `XlsxWriter`: libros de Excel (.xlsx) sin dependencias, con título, encabezados con filtro, números, importes, porcentajes, fechas y totales. |
 
 ```csharp
 var regime = TaxCatalog.For(company.CountryCode, company.DefaultTaxRate);   // la tasa del hub manda
