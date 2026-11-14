@@ -155,3 +155,32 @@ public sealed class PermissionAndTextTests
         Assert.Empty(texts.Missing("pt"));
     }
 }
+
+public sealed class XlsxTests
+{
+    [Fact]
+    public void El_libro_trae_titulo_encabezados_filas_tipadas_y_totales()
+    {
+        var sheet = new VortexApi.Suite.Export.XlsxSheet("Kardex: nov/2026",
+            [new("SKU"), new("Cantidad", VortexApi.Suite.Export.XlsxColumnType.Number), new("Valor", VortexApi.Suite.Export.XlsxColumnType.Money),
+             new("Exactitud", VortexApi.Suite.Export.XlsxColumnType.Percent), new("Fecha", VortexApi.Suite.Export.XlsxColumnType.Date)],
+            [["CAFE-250 <&>", 60m, 360.5m, 50m, new DateOnly(2026, 11, 2)], ["=SUMA(A1)", null, 1, null, null]],
+            Totals: ["Total", 60m, 361.5m, null, null], Title: "Vortex SAC", Subtitle: "Central · 2026-11");
+        var bytes = VortexApi.Suite.Export.XlsxWriter.Write(sheet, sheet with { Name = "Kardex: nov/2026" });
+        Assert.Equal("PK", System.Text.Encoding.ASCII.GetString(bytes, 0, 2));
+
+        using var zip = new System.IO.Compression.ZipArchive(new MemoryStream(bytes));
+        var workbook = System.Xml.Linq.XDocument.Load(zip.GetEntry("xl/workbook.xml")!.Open());
+        Assert.Equal(["Kardex nov2026", "Kardex nov2026 (2)"],
+            workbook.Descendants().Where(e => e.Name.LocalName == "sheet").Select(e => e.Attribute("name")!.Value));
+        var xml = System.Xml.Linq.XDocument.Load(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+        var cells = xml.Descendants().Where(e => e.Name.LocalName == "c").ToDictionary(e => e.Attribute("r")!.Value);
+        Assert.Equal("CAFE-250 <&>", cells["A5"].Value);                       // título, subtítulo, blanco, encabezado en 4
+        Assert.Equal(("60", "360.5"), (cells["B5"].Value, cells["C5"].Value));
+        Assert.Equal("46328", cells["E5"].Value);                              // 2 de noviembre de 2026 como serie de Excel
+        Assert.Equal("=SUMA(A1)", cells["A6"].Value);                          // texto, nunca fórmula
+        Assert.Equal("inlineStr", cells["A6"].Attribute("t")!.Value);
+        Assert.Equal("361.5", cells["C7"].Value);
+        Assert.Equal("AA1", VortexApi.Suite.Export.XlsxWriter.Ref(26, 1));
+    }
+}
